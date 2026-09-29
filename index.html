@@ -1,0 +1,3119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON TYPE // CYBER DEFENDER AAA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ RESET & BASE ============ */
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%; overflow:hidden; background:#000;
+    font-family:'Share Tech Mono', monospace; color:#cfefff;
+    user-select:none; -webkit-font-smoothing:antialiased;
+    cursor:crosshair;
+  }
+  canvas { display:block; position:fixed; inset:0; }
+
+  /* ============ LOADING SCREEN ============ */
+  #loader {
+    position:fixed; inset:0; background:radial-gradient(ellipse at center,#04121c 0%,#000 100%);
+    z-index:9999; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px;
+    transition:opacity .8s ease, visibility .8s;
+  }
+  #loader.hide { opacity:0; visibility:hidden; pointer-events:none; }
+  .ldr-ring {
+    width:100px; height:100px;
+    border:2px solid rgba(0,240,255,.1);
+    border-top-color:#00f0ff;
+    border-right-color:#ff2bd6;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    box-shadow:0 0 60px rgba(0,240,255,.6), inset 0 0 40px rgba(0,240,255,.2);
+  }
+  @keyframes spin { to{ transform:rotate(360deg); } }
+  .ldr-text {
+    font-family:'Orbitron',sans-serif; font-size:13px; letter-spacing:8px;
+    color:#5fc8e0;
+    text-shadow:0 0 20px rgba(0,240,255,.8);
+    animation:blink 1.5s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:.4} 50%{opacity:1} }
+  .ldr-bar {
+    width:280px; height:3px; background:rgba(0,240,255,.1);
+    border-radius:2px; overflow:hidden;
+  }
+  .ldr-fill {
+    height:100%; width:0%;
+    background:linear-gradient(90deg,#00f0ff,#ff2bd6);
+    box-shadow:0 0 20px rgba(0,240,255,.9);
+    transition:width .3s ease;
+  }
+
+  /* ============ FX OVERLAYS ============ */
+  .fx { position:fixed; inset:0; pointer-events:none; }
+  .fx.scan {
+    z-index:100;
+    background:repeating-linear-gradient(to bottom,
+      transparent 0px, transparent 2px,
+      rgba(0,0,0,.18) 3px, rgba(0,0,0,.18) 4px);
+    mix-blend-mode:multiply; opacity:.5;
+  }
+  .fx.vig {
+    z-index:101;
+    background:radial-gradient(ellipse at 50% 45%,transparent 35%,rgba(0,0,0,.85) 100%);
+  }
+  .fx.chroma {
+    z-index:102;
+    background:linear-gradient(90deg,rgba(255,0,100,.02),transparent 20%,transparent 80%,rgba(0,200,255,.02));
+    mix-blend-mode:screen;
+  }
+
+  /* ============ HUD ============ */
+  #hud {
+    position:fixed; inset:0; z-index:150; pointer-events:none;
+    padding:22px 32px;
+    font-family:'Orbitron',sans-serif;
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:start;
+  }
+  .hud-left { display:flex; flex-direction:column; gap:14px; }
+  .hud-right { display:flex; flex-direction:column; gap:14px; align-items:flex-end; }
+  .hud-center { display:flex; flex-direction:column; align-items:center; gap:8px; }
+
+  .stat {
+    display:flex; align-items:baseline; gap:10px;
+    font-size:10px; letter-spacing:4px; color:#3d8ea3;
+    text-shadow:0 0 12px rgba(0,240,255,.4);
+  }
+  .stat .val {
+    font-size:28px; font-weight:900; letter-spacing:0;
+    color:#00f0ff;
+    text-shadow:0 0 15px rgba(0,240,255,1), 0 0 50px rgba(0,240,255,.5);
+    font-variant-numeric:tabular-nums;
+    transition:transform .1s;
+  }
+  .stat .val.pulse { transform:scale(1.15); color:#fff; }
+  .stat .val.pink { color:#ff2bd6; text-shadow:0 0 15px rgba(255,43,214,1), 0 0 50px rgba(255,43,214,.5); }
+  .stat .val.gold { color:#ffd23f; text-shadow:0 0 15px rgba(255,210,63,1), 0 0 50px rgba(255,210,63,.5); }
+  .stat .val.green { color:#39ff14; text-shadow:0 0 15px rgba(57,255,20,1), 0 0 50px rgba(57,255,20,.5); }
+
+  .brand {
+    font-family:'Orbitron',sans-serif; font-size:9px; letter-spacing:10px;
+    color:#2a5c6e; opacity:.6;
+  }
+  .wave-badge {
+    padding:5px 16px; border:1px solid rgba(255,210,63,.45);
+    border-radius:3px; background:rgba(255,210,63,.06);
+    font-size:11px; letter-spacing:5px; color:#ffd23f;
+    text-shadow:0 0 12px rgba(255,210,63,.9);
+    box-shadow:0 0 20px rgba(255,210,63,.15);
+  }
+
+  /* ---- HP bar ---- */
+  #hpbar {
+    position:fixed; bottom:0; left:0; right:0; height:5px;
+    background:rgba(255,255,255,.05); z-index:150;
+  }
+  #hpfill {
+    height:100%; width:100%;
+    background:linear-gradient(90deg,#00ffa3,#00f0ff);
+    box-shadow:0 0 25px rgba(0,255,163,.8), 0 0 60px rgba(0,240,255,.4);
+    transition:width .3s ease, background .3s;
+  }
+  #hpfill.warn { background:linear-gradient(90deg,#ffd23f,#ff8a3f); box-shadow:0 0 25px rgba(255,210,63,.9); }
+  #hpfill.crit { background:linear-gradient(90deg,#ff2d55,#ff0055); box-shadow:0 0 30px rgba(255,45,85,1); animation:hpPulse .5s ease-in-out infinite; }
+  @keyframes hpPulse { 50%{opacity:.55} }
+
+  /* ---- Combo meter ---- */
+  #comboMeter {
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+    z-index:150; pointer-events:none;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .combo-track {
+    width:280px; height:5px;
+    background:rgba(0,240,255,.08); border-radius:3px; overflow:hidden;
+    border:1px solid rgba(0,240,255,.25);
+  }
+  .combo-fill {
+    height:100%; width:0%;
+    background:linear-gradient(90deg,#00f0ff,#ff2bd6,#ffd23f);
+    box-shadow:0 0 20px rgba(255,43,214,.9);
+    transition:width .15s ease-out;
+  }
+  .combo-label {
+    font-family:'Orbitron',sans-serif; font-size:10px; letter-spacing:5px;
+    color:#5fc8e0; text-shadow:0 0 12px rgba(0,240,255,.6);
+  }
+
+  /* ============ SCREENS ============ */
+  .screen {
+    position:fixed; inset:0; z-index:180;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:26px; text-align:center; padding:40px;
+    background:radial-gradient(ellipse at center,rgba(2,6,14,.5) 0%,rgba(2,3,10,.94) 72%);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    animation:fadeIn .5s ease both;
+  }
+  .screen.hidden { display:none; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  .title {
+    font-family:'Orbitron',sans-serif; font-weight:900;
+    font-size:clamp(44px,9vw,120px); letter-spacing:16px; line-height:1;
+    color:#eaffff;
+    text-shadow:
+      0 0 14px #00f0ff, 0 0 45px #00f0ff,
+      0 0 100px rgba(0,240,255,.7), 0 0 180px rgba(0,240,255,.4);
+    animation:pulse 3.5s ease-in-out infinite;
+    position:relative;
+  }
+  .title .accent {
+    color:#ff2bd6;
+    text-shadow:
+      0 0 14px #ff2bd6, 0 0 45px #ff2bd6,
+      0 0 100px rgba(255,43,214,.7), 0 0 180px rgba(255,43,214,.4);
+  }
+  @keyframes pulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.3)} }
+
+  .subtitle {
+    font-family:'Orbitron',sans-serif;
+    font-size:clamp(10px,1.4vw,13px);
+    letter-spacing:12px; color:#3f7f94;
+    margin-top:-12px;
+    text-shadow:0 0 20px rgba(0,240,255,.4);
+  }
+
+  .howto {
+    display:flex; gap:44px; flex-wrap:wrap; justify-content:center;
+    margin:14px 0;
+  }
+  .howto .item {
+    display:flex; flex-direction:column; align-items:center; gap:9px;
+  }
+  .howto .key {
+    font-family:'Orbitron',sans-serif; font-weight:700;
+    font-size:13px; padding:11px 18px; min-width:60px;
+    border:1px solid rgba(0,240,255,.4);
+    border-radius:5px; color:#9fe9ff;
+    background:linear-gradient(180deg,rgba(0,240,255,.10),rgba(0,240,255,.02));
+    box-shadow:inset 0 -3px 0 rgba(0,240,255,.2), 0 0 26px rgba(0,240,255,.2);
+    text-shadow:0 0 8px rgba(0,240,255,.7);
+  }
+  .howto .desc {
+    font-size:10px; letter-spacing:4px; color:#3d6b7d;
+  }
+
+  .legend { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; margin-top:12px; }
+  .legend .lg {
+    display:flex; align-items:center; gap:10px;
+    font-size:10px; letter-spacing:3px; color:#4b8ba0;
+  }
+  .legend .dot {
+    width:13px; height:13px; border-radius:50%;
+  }
+
+  .btn {
+    font-family:'Orbitron',sans-serif; font-weight:700;
+    letter-spacing:6px; font-size:15px;
+    padding:18px 50px; cursor:pointer; color:#00f0ff;
+    background:linear-gradient(180deg,rgba(0,240,255,.10),rgba(0,240,255,.02));
+    border:1px solid rgba(0,240,255,.6);
+    border-radius:4px; position:relative; overflow:hidden;
+    text-shadow:0 0 14px rgba(0,240,255,1);
+    box-shadow:0 0 30px rgba(0,240,255,.25), inset 0 0 30px rgba(0,240,255,.08);
+    transition:all .25s cubic-bezier(.2,.9,.3,1.3);
+  }
+  .btn::before {
+    content:''; position:absolute; top:0; left:-100%; width:100%; height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);
+    transition:left .5s;
+  }
+  .btn:hover::before { left:100%; }
+  .btn:hover {
+    color:#031018; background:#00f0ff;
+    box-shadow:0 0 60px rgba(0,240,255,1), 0 0 130px rgba(0,240,255,.5);
+    text-shadow:none; transform:translateY(-3px) scale(1.02);
+  }
+  .btn:active { transform:translateY(0) scale(.97); }
+
+  .stat-grid {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(130px,1fr));
+    gap:22px 48px; margin:12px 0;
+  }
+  .stat-box { display:flex; flex-direction:column; gap:6px; }
+  .stat-box .k {
+    font-family:'Orbitron',sans-serif;
+    font-size:9px; letter-spacing:5px; color:#3d6b7d;
+  }
+  .stat-box .v {
+    font-family:'Orbitron',sans-serif; font-weight:900; font-size:34px;
+    color:#00f0ff; text-shadow:0 0 22px rgba(0,240,255,.9);
+    font-variant-numeric:tabular-nums;
+  }
+  .stat-box .v.pink { color:#ff2bd6; text-shadow:0 0 22px rgba(255,43,214,.9); }
+  .stat-box .v.gold { color:#ffd23f; text-shadow:0 0 22px rgba(255,210,63,.9); }
+
+  .go-title {
+    font-family:'Orbitron',sans-serif; font-weight:900;
+    letter-spacing:14px;
+    font-size:clamp(30px,6.5vw,72px);
+    color:#ff2d55;
+    text-shadow:
+      0 0 22px #ff2d55, 0 0 70px rgba(255,45,85,.8),
+      0 0 140px rgba(255,45,85,.4);
+    animation:glitch .16s steps(2) infinite alternate;
+  }
+  @keyframes glitch {
+    from{transform:translate(-2px,0)}
+    to{transform:translate(2px,0)}
+  }
+  .hint {
+    font-size:10px; letter-spacing:5px; color:#2e5866;
+    margin-top:8px;
+  }
+
+  /* ---- Wave announcement ---- */
+  #waveAnnounce {
+    position:fixed; top:42%; left:50%;
+    transform:translate(-50%,-50%) scale(.6);
+    z-index:170; pointer-events:none;
+    font-family:'Orbitron',sans-serif; font-weight:900;
+    font-size:clamp(36px,7vw,86px);
+    letter-spacing:14px;
+    color:#ffd23f;
+    text-shadow:
+      0 0 22px #ffd23f, 0 0 60px rgba(255,210,63,.8),
+      0 0 130px rgba(255,210,63,.4);
+    opacity:0;
+  }
+  #waveAnnounce.show {
+    animation:waveIn 2s cubic-bezier(.2,.9,.3,1.2);
+  }
+  @keyframes waveIn {
+    0%   { opacity:0; transform:translate(-50%,-50%) scale(.4); letter-spacing:40px; }
+    20%  { opacity:1; transform:translate(-50%,-50%) scale(1.05); letter-spacing:14px; }
+    75%  { opacity:1; transform:translate(-50%,-50%) scale(1); }
+    100% { opacity:0; transform:translate(-50%,-50%) scale(1.2); }
+  }
+
+  /* ---- Damage flash ---- */
+  #damageFlash {
+    position:fixed; inset:0; z-index:110; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 30%, rgba(255,0,60,.7) 100%);
+    opacity:0;
+    transition:opacity .1s;
+  }
+  #damageFlash.hit { animation:damageShake .4s ease-out; }
+  @keyframes damageShake {
+    0% { opacity:1; }
+    100% { opacity:0; }
+  }
+
+  /* ---- Powerup Toast ---- */
+  #powerToast {
+    position:fixed; top:80px; left:50%;
+    transform:translateX(-50%);
+    z-index:170; pointer-events:none;
+    padding:12px 34px;
+    font-family:'Orbitron',sans-serif; font-weight:700;
+    font-size:14px; letter-spacing:8px;
+    border:1px solid currentColor; border-radius:4px;
+    background:rgba(2,6,14,.85);
+    backdrop-filter:blur(8px);
+    opacity:0;
+    box-shadow:0 0 40px currentColor;
+    text-shadow:0 0 15px currentColor;
+  }
+  #powerToast.show { animation:toastIn 2s ease-out; }
+  @keyframes toastIn {
+    0%   { opacity:0; transform:translate(-50%,-20px) scale(.9); }
+    15%  { opacity:1; transform:translate(-50%,0) scale(1.05); }
+    75%  { opacity:1; transform:translate(-50%,0) scale(1); }
+    100% { opacity:0; transform:translate(-50%,-10px) scale(.95); }
+  }
+
+  /* ---- Status indicators ---- */
+  #statusIndicators {
+    position:fixed; top:120px; left:50%;
+    transform:translateX(-50%);
+    z-index:150; pointer-events:none;
+    display:flex; gap:12px;
+  }
+  .indicator {
+    padding:6px 14px;
+    font-family:'Orbitron',sans-serif; font-size:10px; letter-spacing:4px;
+    border:1px solid currentColor; border-radius:3px;
+    background:rgba(2,6,14,.7);
+    text-shadow:0 0 12px currentColor;
+    box-shadow:0 0 20px rgba(0,0,0,.6);
+    opacity:0; transition:opacity .3s;
+  }
+  .indicator.active { opacity:1; animation:indPulse 1s ease-in-out infinite; }
+  @keyframes indPulse { 50%{ filter:brightness(1.5); } }
+
+  /* ---- Mute button ---- */
+  #muteBtn {
+    position:fixed; bottom:24px; right:24px;
+    z-index:160; width:46px; height:46px;
+    border-radius:50%; cursor:pointer;
+    background:rgba(0,240,255,.08);
+    border:1px solid rgba(0,240,255,.45);
+    color:#00f0ff; font-size:18px;
+    display:grid; place-items:center;
+    transition:all .2s;
+    backdrop-filter:blur(10px);
+  }
+  #muteBtn:hover {
+    background:rgba(0,240,255,.25);
+    box-shadow:0 0 30px rgba(0,240,255,.8);
+    transform:scale(1.1);
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOADER ================= -->
+<div id="loader">
+  <div class="ldr-ring"></div>
+  <div class="ldr-text">INITIALIZING DEFENSE GRID</div>
+  <div class="ldr-bar"><div class="ldr-fill" id="ldrFill"></div></div>
+</div>
+
+<!-- ================= CANVAS ================= -->
+<canvas id="game"></canvas>
+
+<!-- ================= FX ================= -->
+<div class="fx scan"></div>
+<div class="fx vig"></div>
+<div class="fx chroma"></div>
+<div id="damageFlash"></div>
+
+<!-- ================= HUD ================= -->
+<div id="hud">
+  <div class="hud-left">
+    <div class="stat">SCORE <span class="val" id="hud-score">0</span></div>
+    <div class="stat">COMBO <span class="val pink" id="hud-combo">x1</span></div>
+  </div>
+  <div class="hud-center">
+    <div class="brand">CYBER · TYPE · DEFENSE</div>
+    <div class="wave-badge" id="waveBadge">WAVE 1</div>
+  </div>
+  <div class="hud-right">
+    <div class="stat">WPM <span class="val" id="hud-wpm">0</span></div>
+    <div class="stat">ACC <span class="val green" id="hud-acc">100%</span></div>
+  </div>
+</div>
+
+<div id="hpbar"><div id="hpfill"></div></div>
+
+<div id="comboMeter">
+  <div class="combo-track"><div class="combo-fill" id="comboFill"></div></div>
+  <div class="combo-label" id="comboLabel">COMBO METER</div>
+</div>
+
+<div id="waveAnnounce"></div>
+<div id="powerToast"></div>
+<div id="statusIndicators">
+  <div class="indicator" id="indSlow" style="color:#00f0ff">SLOW</div>
+  <div class="indicator" id="indDouble" style="color:#ff2bd6">OVERCLOCK</div>
+</div>
+
+<button id="muteBtn">🔊</button>
+
+<!-- ================= START SCREEN ================= -->
+<div id="screen-start" class="screen">
+  <div class="title">NEON<span class="accent">TYPE</span></div>
+  <div class="subtitle">CYBER DEFENDER · PROTOCOL V4</div>
+
+  <div class="howto">
+    <div class="item"><div class="key">A–Z</div><div class="desc">TYPE TO LOCK & FIRE</div></div>
+    <div class="item"><div class="key">ESC</div><div class="desc">PAUSE</div></div>
+    <div class="item"><div class="key">↵</div><div class="desc">RESTART</div></div>
+  </div>
+
+  <div class="legend">
+    <div class="lg"><span class="dot" style="background:#00f0ff;box-shadow:0 0 16px #00f0ff"></span>DATA PACKET</div>
+    <div class="lg"><span class="dot" style="background:#ffd23f;box-shadow:0 0 16px #ffd23f"></span>POWER CORE</div>
+    <div class="lg"><span class="dot" style="background:#ff2d55;box-shadow:0 0 16px #ff2d55"></span>BOSS</div>
+    <div class="lg"><span class="dot" style="background:#39ff14;box-shadow:0 0 16px #39ff14"></span>LOCKED CHARS</div>
+  </div>
+
+  <button class="btn" id="btn-start">INITIALIZE</button>
+  <div class="hint">DESTROY PACKETS BEFORE THEY REACH THE CORE</div>
+</div>
+
+<!-- ================= PAUSE SCREEN ================= -->
+<div id="screen-pause" class="screen hidden">
+  <div class="title" style="font-size:clamp(30px,5.5vw,64px)">PAUSED</div>
+  <div class="subtitle">SYSTEM SUSPENDED</div>
+  <button class="btn" id="btn-resume">RESUME</button>
+  <button class="btn" id="btn-quit"
+    style="border-color:rgba(255,45,85,.6);color:#ff5c7a;text-shadow:0 0 14px rgba(255,45,85,1);background:linear-gradient(180deg,rgba(255,45,85,.12),rgba(255,45,85,.02))">ABORT</button>
+</div>
+
+<!-- ================= GAME OVER ================= -->
+<div id="screen-over" class="screen hidden">
+  <div class="go-title">SYSTEM BREACH</div>
+  <div class="subtitle">CORE INTEGRITY LOST</div>
+
+  <div class="stat-grid">
+    <div class="stat-box"><div class="k">SCORE</div><div class="v" id="ov-score">0</div></div>
+    <div class="stat-box"><div class="k">WPM</div><div class="v pink" id="ov-wpm">0</div></div>
+    <div class="stat-box"><div class="k">ACCURACY</div><div class="v gold" id="ov-acc">0%</div></div>
+    <div class="stat-box"><div class="k">MAX COMBO</div><div class="v pink" id="ov-combo">x1</div></div>
+    <div class="stat-box"><div class="k">WAVE</div><div class="v gold" id="ov-wave">1</div></div>
+    <div class="stat-box"><div class="k">KILLS</div><div class="v" id="ov-kills">0</div></div>
+  </div>
+
+  <button class="btn" id="btn-restart">REBOOT SYSTEM</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+
+/* =========================================================================
+   ██████╗  █████╗ ███╗   ███╗███████╗    ██████╗ ██████╗ ██████╗ ███████╗
+  ██╔════╝ ██╔══██╗████╗ ████║██╔════╝   ██╔════╝██╔═══██╗██╔══██╗██╔════╝
+  ██║  ███╗███████║██╔████╔██║█████╗     ██║     ██║   ██║██████╔╝█████╗
+  ██║   ██║██╔══██║██║╚██╔╝██║██╔══╝     ██║     ██║   ██║██╔══██╗██╔══╝
+  ╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗   ╚██████╗╚██████╔╝██║  ██║███████╗
+   ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝    ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
+   NEON TYPE // CYBER DEFENDER V4
+   ========================================================================= */
+
+/* =========================================================================
+   § 1.0 — UTILITIES
+   ========================================================================= */
+
+const TAU = Math.PI * 2;
+const rand     = (a,b) => a + Math.random()*(b-a);
+const randInt  = (a,b) => Math.floor(rand(a,b+1));
+const pick     = arr => arr[Math.floor(Math.random()*arr.length)];
+const clamp    = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp     = (a,b,t) => a + (b-a)*t;
+const smoothstep = (e0,e1,x) => {
+  const t = clamp((x-e0)/(e1-e0), 0, 1);
+  return t*t*(3 - 2*t);
+};
+const damp = (current, target, lambda, dt) => lerp(current, target, 1 - Math.exp(-lambda*dt));
+
+/* =========================================================================
+   § 2.0 — AUDIO ENGINE (procedural synth)
+   ========================================================================= */
+
+let audioCtx = null;
+let muted = false;
+
+function initAudio(){
+  if (!audioCtx) {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return null;
+    audioCtx = new C();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function tone({freq=440, dur=0.1, type='square', vol=0.05, slideTo=null, delay=0}){
+  if (muted) return;
+  const a = initAudio(); if (!a) return;
+  const t0 = a.currentTime + delay;
+  const osc = a.createOscillator();
+  const g   = a.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t0+dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(vol, t0+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(g).connect(a.destination);
+  osc.start(t0); osc.stop(t0+dur+0.05);
+}
+
+function noiseBurst({dur=0.25, vol=0.09, cutoff=1400, delay=0, q=1}){
+  if (muted) return;
+  const a = initAudio(); if (!a) return;
+  const t0 = a.currentTime + delay;
+  const len = Math.floor(a.sampleRate * dur);
+  const buf = a.createBuffer(1, len, a.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<len;i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, 2);
+  const src = a.createBufferSource(); src.buffer = buf;
+  const flt = a.createBiquadFilter();
+  flt.type = 'lowpass'; flt.frequency.value = cutoff; flt.Q.value = q;
+  const g = a.createGain(); g.gain.value = vol;
+  src.connect(flt).connect(g).connect(a.destination);
+  src.start(t0);
+}
+
+const sfx = {
+  key:        () => tone({freq: 1600, dur:0.024, type:'square', vol:0.018, slideTo: 2300}),
+  error:      () => { tone({freq:180, dur:0.14, type:'sawtooth', vol:0.05, slideTo:70}); },
+  word:       () => {
+    tone({freq:700, dur:0.06, type:'triangle', vol:0.05});
+    tone({freq:1050, dur:0.07, type:'triangle', vol:0.045, delay:0.05});
+    tone({freq:1550, dur:0.10, type:'triangle', vol:0.04, delay:0.10});
+  },
+  boom:       () => {
+    noiseBurst({dur:0.5, vol:0.13, cutoff:2200, q:1.2});
+    tone({freq:110, dur:0.35, type:'sine', vol:0.08, slideTo:35});
+  },
+  bigBoom:    () => {
+    noiseBurst({dur:0.9, vol:0.16, cutoff:3000, q:1.5});
+    tone({freq:80, dur:0.7, type:'sine', vol:0.10, slideTo:22});
+    tone({freq:200, dur:0.4, type:'sawtooth', vol:0.06, slideTo:50, delay:0.05});
+  },
+  damage:     () => {
+    tone({freq:90, dur:0.4, type:'sawtooth', vol:0.09, slideTo:30});
+    noiseBurst({dur:0.3, vol:0.09, cutoff:700});
+  },
+  power:      () => {
+    [520,700,900,1200,1550].forEach((f,i)=>
+      tone({freq:f, dur:0.10, type:'triangle', vol:0.05, delay:i*0.055}));
+  },
+  wave:       () => {
+    tone({freq:280, dur:0.20, type:'square', vol:0.05});
+    tone({freq:420, dur:0.20, type:'square', vol:0.045, delay:0.15});
+    tone({freq:560, dur:0.30, type:'square', vol:0.045, delay:0.30});
+    tone({freq:700, dur:0.45, type:'triangle', vol:0.05, delay:0.45});
+  },
+  over:       () => {
+    [700,560,440,330,220,140].forEach((f,i)=>
+      tone({freq:f, dur:0.35, type:'sawtooth', vol:0.06, delay:i*0.17, slideTo:f*0.7}));
+    noiseBurst({dur:1.5, vol:0.12, cutoff:900, delay:0.5});
+  },
+  levelup:    () => {
+    [400,500,650,800,1000].forEach((f,i)=>
+      tone({freq:f, dur:0.14, type:'triangle', vol:0.055, delay:i*0.07}));
+  },
+  bossAlarm:  () => {
+    for (let i=0;i<4;i++){
+      tone({freq:600, dur:0.20, type:'square', vol:0.06, delay:i*0.4});
+      tone({freq:400, dur:0.20, type:'square', vol:0.055, delay:i*0.4+0.2});
+    }
+  },
+};
+
+/* =========================================================================
+   § 3.0 — CORE RENDERER / SCENE / CAMERA
+   ========================================================================= */
+
+const canvas = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  powerPreference: 'high-performance',
+  stencil: false,
+  alpha: false,
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = false;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x02030a);
+scene.fog = new THREE.FogExp2(0x02030a, 0.015);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 600);
+const CAM_BASE = new THREE.Vector3(0, 10, 22);
+const CAM_TARGET = new THREE.Vector3(0, 8, -2);
+camera.position.copy(CAM_BASE);
+camera.lookAt(CAM_TARGET);
+
+/* =========================================================================
+   § 4.0 — LIGHTING RIG
+   ========================================================================= */
+
+const ambient = new THREE.AmbientLight(0x1a2c44, 0.75);
+scene.add(ambient);
+
+const hemi = new THREE.HemisphereLight(0x00a0ff, 0x1a0a2e, 0.55);
+scene.add(hemi);
+
+const keyLight = new THREE.DirectionalLight(0x00c8ff, 1.6);
+keyLight.position.set(-10, 22, 12);
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0xff2bd6, 1.1);
+rimLight.position.set(12, 8, -14);
+scene.add(rimLight);
+
+const topLight = new THREE.DirectionalLight(0xffd23f, 0.55);
+topLight.position.set(0, 30, 5);
+scene.add(topLight);
+
+const coreLight = new THREE.PointLight(0x00f0ff, 4.5, 45, 2);
+coreLight.position.set(0, 3, 0);
+scene.add(coreLight);
+
+const dangerLight = new THREE.PointLight(0xff2d55, 2.8, 35, 2);
+dangerLight.position.set(0, 3.4, 0);
+scene.add(dangerLight);
+
+const pulseLight = new THREE.PointLight(0xff2bd6, 0, 60, 2);
+pulseLight.position.set(0, 6, 0);
+scene.add(pulseLight);
+
+/* =========================================================================
+   § 5.0 — GRID FLOOR WITH FLOWING SHADER
+   ========================================================================= */
+
+const groundGeo = new THREE.PlaneGeometry(600, 600, 1, 1);
+
+const groundMat = new THREE.ShaderMaterial({
+  transparent: false,
+  uniforms: {
+    uTime:   { value: 0 },
+    uColorA: { value: new THREE.Color(0x00a8ff) },
+    uColorB: { value: new THREE.Color(0xff2bd6) },
+    uColorC: { value: new THREE.Color(0x39ff14) },
+    uHit:    { value: 0 },
+    uCam:    { value: new THREE.Vector3() },
+  },
+  vertexShader: `
+    varying vec3 vWPos;
+    void main(){
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWPos = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }`,
+  fragmentShader: `
+    uniform float uTime;
+    uniform vec3 uColorA;
+    uniform vec3 uColorB;
+    uniform vec3 uColorC;
+    uniform float uHit;
+    uniform vec3 uCam;
+    varying vec3 vWPos;
+
+    float gridLine(vec2 p, float w){
+      vec2 g = abs(fract(p - 0.5) - 0.5) / fwidth(p);
+      float l = min(g.x, g.y);
+      return 1.0 - min(l / w, 1.0);
+    }
+
+    void main(){
+      vec2 p = vWPos.xz;
+
+      // multi-layer grid
+      float fine   = gridLine(p * 3.0, 1.4) * 0.18;
+      float medium = gridLine(p * 1.0, 1.2) * 0.35;
+      float coarse = gridLine(p * 0.20, 1.0) * 0.85;
+      float grid = fine + medium + coarse;
+
+      // radial distance
+      float r = length(p);
+      float camDist = length(vWPos - uCam);
+
+      // ripple waves from center
+      float ripple = sin(r * 0.55 - uTime * 3.0) * 0.5 + 0.5;
+      ripple = pow(ripple, 4.0);
+
+      // scan line
+      float scan = sin(p.y * 0.3 - uTime * 2.5) * 0.5 + 0.5;
+      scan = pow(scan, 6.0) * 0.4;
+
+      // color mix based on distance
+      vec3 col = mix(uColorA, uColorB, smoothstep(0.0, 90.0, r));
+      col = mix(col, uColorC, smoothstep(60.0, 120.0, r) * 0.5);
+
+      col *= grid;
+      col += col * ripple * 1.2;
+      col += col * scan;
+
+      // hit flash near center
+      float hitMask = exp(-r * 0.15) * uHit;
+      col += vec3(1.0, 0.3, 0.5) * hitMask;
+
+      // distance fade
+      float fade = smoothstep(180.0, 25.0, r);
+      col *= fade;
+
+      // subtle pulse
+      float p2 = 0.9 + 0.1 * sin(uTime * 1.5);
+      col *= p2;
+
+      gl_FragColor = vec4(col, 1.0);
+    }`
+});
+
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+scene.add(ground);
+
+/* =========================================================================
+   § 6.0 — STARFIELD (deep space)
+   ========================================================================= */
+
+function buildStars(){
+  const N = 1400;
+  const positions = new Float32Array(N*3);
+  const colors    = new Float32Array(N*3);
+  const sizes     = new Float32Array(N);
+
+  for (let i=0;i<N;i++){
+    const r = rand(120, 500);
+    const theta = rand(0, TAU);
+    const phi = Math.acos(rand(-0.3, 1));
+    positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    positions[i*3+1] = r * Math.cos(phi) + 60;
+    positions[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+
+    // colored stars
+    const tint = Math.random();
+    let c;
+    if (tint < 0.6) c = new THREE.Color(0x88c8ff);
+    else if (tint < 0.85) c = new THREE.Color(0xff9fdc);
+    else c = new THREE.Color(0xfff0a8);
+
+    colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+    sizes[i] = rand(0.5, 1.8);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('aSize',  new THREE.BufferAttribute(sizes, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `
+      attribute float aSize;
+      attribute vec3 aColor;
+      uniform float uTime;
+      varying vec3 vColor;
+      varying float vTw;
+      void main(){
+        vColor = aColor;
+        vec3 p = position;
+        vTw = 0.5 + 0.5 * sin(uTime * 1.5 + p.x * 0.05 + p.z * 0.05);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = aSize * (400.0 / -mv.z) * (0.7 + vTw * 0.6);
+      }`,
+    fragmentShader: `
+      varying vec3 vColor;
+      varying float vTw;
+      void main(){
+        vec2 c = gl_PointCoord - 0.5;
+        float d = length(c);
+        if (d > 0.5) discard;
+        float a = smoothstep(0.5, 0.0, d);
+        a = pow(a, 2.0);
+        gl_FragColor = vec4(vColor * (0.7 + vTw), a);
+      }`
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  scene.add(pts);
+  return pts;
+}
+const stars = buildStars();
+
+/* =========================================================================
+   § 7.0 — NEBULA CLOUDS (huge billboard sprites)
+   ========================================================================= */
+
+function buildNebula(){
+  const N = 14;
+  const group = new THREE.Group();
+  for (let i=0;i<N;i++){
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const grd = ctx.createRadialGradient(128,128,0, 128,128,128);
+    const hue = rand(180, 320);
+    grd.addColorStop(0,   `hsla(${hue}, 80%, 60%, 0.55)`);
+    grd.addColorStop(0.4, `hsla(${hue}, 80%, 45%, 0.20)`);
+    grd.addColorStop(1,   `hsla(${hue}, 80%, 30%, 0)`);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0,0,256,256);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      opacity: 0.35,
+    });
+    const spr = new THREE.Sprite(mat);
+    const r = rand(180, 400);
+    const ang = rand(0, TAU);
+    spr.position.set(Math.cos(ang)*r, rand(40, 160), Math.sin(ang)*r);
+    const size = rand(90, 220);
+    spr.scale.set(size, size, 1);
+    spr.userData.baseScale = size;
+    spr.userData.phase = rand(0, TAU);
+    group.add(spr);
+  }
+  scene.add(group);
+  return group;
+}
+const nebula = buildNebula();
+
+/* =========================================================================
+   § 8.0 — FAR SKYLINE CITY (instanced glowing skyscrapers)
+   ========================================================================= */
+
+function buildFarCity(){
+  const count = 240;
+  const boxGeo = new THREE.BoxGeometry(1,1,1);
+  const boxMat = new THREE.MeshStandardMaterial({
+    color: 0x040a14,
+    emissive: 0x0a2a44,
+    emissiveIntensity: 0.55,
+    metalness: 0.9,
+    roughness: 0.35,
+  });
+  const inst = new THREE.InstancedMesh(boxGeo, boxMat, count);
+  const dummy = new THREE.Object3D();
+  const colors = new Float32Array(count * 3);
+
+  for (let i=0;i<count;i++){
+    const ang = rand(0, TAU);
+    const dist = rand(50, 220);
+    const x = Math.cos(ang) * dist;
+    const z = Math.sin(ang) * dist;
+    const h = rand(8, 90) * (1 - dist/280);
+    const w = rand(2.5, 8);
+    const d = rand(2.5, 8);
+
+    dummy.position.set(x, h/2, z);
+    dummy.scale.set(w, h, d);
+    dummy.rotation.y = rand(0, TAU);
+    dummy.updateMatrix();
+    inst.setMatrixAt(i, dummy.matrix);
+
+    const c = Math.random() < 0.5
+      ? new THREE.Color(0x0a1c30)
+      : new THREE.Color(0x1a0a26);
+    colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+  }
+  inst.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+  inst.instanceMatrix.needsUpdate = true;
+  scene.add(inst);
+  return inst;
+}
+buildFarCity();
+
+/* =========================================================================
+   § 9.0 — NEAR BUILDINGS (large dark structures with window strips)
+   ========================================================================= */
+
+function buildNearBuildings(){
+  const group = new THREE.Group();
+
+  function makeBuilding(x, z, w, d, h){
+    const b = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({
+        color: 0x050810,
+        emissive: 0x0a1a2a,
+        emissiveIntensity: 0.4,
+        metalness: 0.95,
+        roughness: 0.25,
+      })
+    );
+    b.position.set(x, h/2, z);
+    group.add(b);
+
+    // Window rows (glowing strips)
+    const rows = Math.floor(h / 2.2);
+    const strips = new THREE.Group();
+    for (let r=0;r<rows;r++){
+      if (Math.random() < 0.35) continue; // some dark rows
+      const stripMat = new THREE.MeshBasicMaterial({
+        color: Math.random() < 0.5 ? 0x00c8ff : 0xff5cd2,
+        transparent: true,
+        opacity: rand(0.3, 0.9),
+      });
+      const face = randInt(0,3);
+      let sw, sd, sx, sz;
+      if (face === 0){ sw = w*0.85; sd = 0.05; sx = 0; sz = d/2 + 0.01; }
+      else if (face === 1){ sw = w*0.85; sd = 0.05; sx = 0; sz = -d/2 - 0.01; }
+      else if (face === 2){ sw = 0.05; sd = d*0.85; sx = w/2 + 0.01; sz = 0; }
+      else { sw = 0.05; sd = d*0.85; sx = -w/2 - 0.01; sz = 0; }
+
+      const strip = new THREE.Mesh(
+        new THREE.BoxGeometry(sw, 0.35, sd),
+        stripMat
+      );
+      strip.position.set(sx, -h/2 + 1.5 + r * 2.2, sz);
+      strips.add(strip);
+    }
+    b.add(strips);
+
+    // antenna light on top
+    if (Math.random() < 0.6){
+      const antMat = new THREE.MeshBasicMaterial({
+        color: 0xff2d55,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const ant = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), antMat);
+      ant.position.y = h/2 + 0.3;
+      const antLight = new THREE.PointLight(0xff2d55, 0.6, 15);
+      antLight.position.copy(ant.position);
+      b.add(ant);
+      b.add(antLight);
+    }
+  }
+
+  const positions = [
+    [-28, -22, 6, 6, 28],
+    [ 28, -22, 7, 7, 34],
+    [-42, -42, 8, 8, 46],
+    [ 42, -42, 9, 9, 52],
+    [-20, -55, 5, 5, 22],
+    [ 22, -55, 6, 6, 30],
+    [-55, -30, 7, 7, 40],
+    [ 55, -30, 8, 8, 44],
+    [  0, -70, 12, 12, 60],
+    [-70,  10, 6, 6, 26],
+    [ 70,  10, 6, 6, 26],
+  ];
+  positions.forEach(p => makeBuilding(p[0], p[1], p[2], p[3], p[4]));
+  scene.add(group);
+  return group;
+}
+buildNearBuildings();
+
+/* =========================================================================
+   § 10.0 — FLYING TRAFFIC (animated light streaks)
+   ========================================================================= */
+
+function buildTraffic(){
+  const group = new THREE.Group();
+  const trails = [];
+  const N = 28;
+
+  for (let i=0;i<N;i++){
+    const color = Math.random() < 0.5 ? 0x00c8ff : 0xff2bd6;
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const geo = new THREE.CapsuleGeometry(0.08, rand(1.5, 3.5), 3, 6);
+    const mesh = new THREE.Mesh(geo, mat);
+
+    // Random lane
+    const lane = randInt(0, 2);
+    const speed = rand(15, 45) * (Math.random() < 0.5 ? 1 : -1);
+    const baseY = 12 + lane * 6 + rand(-1, 1);
+    const baseZ = rand(-50, -100);
+
+    mesh.position.set(
+      rand(-100, 100),
+      baseY,
+      baseZ
+    );
+    mesh.rotation.z = Math.PI / 2;
+    if (speed < 0) mesh.rotation.z = -Math.PI / 2;
+
+    // Trail (glow sprite)
+    const glowCanvas = document.createElement('canvas');
+    glowCanvas.width = 128; glowCanvas.height = 32;
+    const gctx = glowCanvas.getContext('2d');
+    const grd = gctx.createLinearGradient(0,0,128,0);
+    grd.addColorStop(0, `rgba(${(color>>16)&255},${(color>>8)&255},${color&255},0.9)`);
+    grd.addColorStop(1, `rgba(${(color>>16)&255},${(color>>8)&255},${color&255},0)`);
+    gctx.fillStyle = grd;
+    gctx.fillRect(0,0,128,32);
+    const tex = new THREE.CanvasTexture(glowCanvas);
+    const trailMat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const trail = new THREE.Sprite(trailMat);
+    trail.scale.set(14, 0.8, 1);
+    trail.position.x = speed > 0 ? -7 : 7;
+    mesh.add(trail);
+
+    group.add(mesh);
+    trails.push({ mesh, speed, baseY, baseZ, phase: rand(0, TAU) });
+  }
+
+  scene.add(group);
+  return { group, trails };
+}
+const traffic = buildTraffic();
+
+/* =========================================================================
+   § 11.0 — HOLOGRAPHIC BILLBOARDS (animated shader planes)
+   ========================================================================= */
+
+function buildBillboards(){
+  const group = new THREE.Group();
+
+  function makeBillboard(x, y, z, w, h, hue){
+    const geo = new THREE.PlaneGeometry(w, h);
+    const mat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: {
+        uTime: { value: 0 },
+        uHue:  { value: hue },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main(){
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uHue;
+        varying vec2 vUv;
+
+        vec3 hsl2rgb(vec3 c){
+          vec3 rgb = clamp(abs(mod(c.x*6.0 + vec3(0.0,4.0,2.0), 6.0)-3.0)-1.0, 0.0, 1.0);
+          return c.z + c.y * (rgb - 0.5) * (1.0 - abs(2.0*c.z - 1.0));
+        }
+
+        void main(){
+          vec2 uv = vUv;
+
+          // horizontal scanlines
+          float lines = step(0.5, fract(uv.y * 40.0));
+          float scanY = fract(uv.y - uTime * 0.15);
+          float scan = smoothstep(0.0, 0.05, scanY) * smoothstep(0.1, 0.05, scanY);
+
+          // moving bar
+          float barY = fract(uv.y + uTime * 0.3);
+          float bar = smoothstep(0.0, 0.02, barY) * smoothstep(0.05, 0.02, barY);
+
+          // random flicker
+          float flicker = 0.8 + 0.2 * sin(uTime * 30.0 + uv.x * 10.0);
+          float glitch = step(0.98, fract(sin(uTime * 20.0 + uv.y * 30.0) * 4000.0));
+
+          vec3 col = hsl2rgb(vec3(uHue, 0.9, 0.55));
+
+          // base board
+          float board = smoothstep(0.0, 0.02, uv.x) * smoothstep(1.0, 0.98, uv.x)
+                      * smoothstep(0.0, 0.02, uv.y) * smoothstep(1.0, 0.98, uv.y);
+
+          // edge glow
+          float edge = smoothstep(0.05, 0.0, min(min(uv.x, 1.0-uv.x), min(uv.y, 1.0-uv.y)));
+
+          float a = board * (0.35 + lines * 0.4 + scan * 0.6 + bar * 0.5) * flicker;
+          a += edge * 0.8;
+          a += glitch * 0.4;
+
+          gl_FragColor = vec4(col * (0.7 + scan + bar), a);
+        }`
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.rotation.y = Math.atan2(-x, -z) - Math.PI/2;
+    group.add(mesh);
+    return mesh;
+  }
+
+  makeBillboard(-30, 20, -35, 14, 8, 0.55);
+  makeBillboard( 35, 26, -40, 16, 10, 0.88);
+  makeBillboard(-50, 32, -60, 18, 12, 0.35);
+  makeBillboard( 50, 28, -55, 15, 9, 0.72);
+  makeBillboard(-18, 42, -75, 20, 14, 0.10);
+  makeBillboard( 22, 38, -70, 22, 15, 0.95);
+
+  scene.add(group);
+  return group;
+}
+const billboards = buildBillboards();
+
+/* =========================================================================
+   § 12.0 — DATA STREAMS (vertical falling glowing particles around arena)
+   ========================================================================= */
+
+function buildDataStreams(){
+  const streams = [];
+  const group = new THREE.Group();
+  const N = 30;
+
+  for (let i=0;i<N;i++){
+    const ang = rand(0, TAU);
+    const r = rand(16, 28);
+    const x = Math.cos(ang) * r;
+    const z = Math.sin(ang) * r;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 32; canvas.height = 64;
+    const c = canvas.getContext('2d');
+    const hue = rand(160, 320);
+    const grd = c.createLinearGradient(0,0,0,64);
+    grd.addColorStop(0, `hsla(${hue}, 100%, 60%, 0)`);
+    grd.addColorStop(0.5, `hsla(${hue}, 100%, 65%, 1)`);
+    grd.addColorStop(1, `hsla(${hue}, 100%, 60%, 0)`);
+    c.fillStyle = grd;
+    c.fillRect(12, 0, 8, 64);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    const stream = new THREE.Sprite(mat);
+    stream.position.set(x, rand(5, 35), z);
+    stream.scale.set(0.8, 5, 1);
+    stream.userData.speed = rand(3, 9);
+    stream.userData.resetY = rand(35, 55);
+    group.add(stream);
+    streams.push(stream);
+  }
+
+  scene.add(group);
+  return { group, streams };
+}
+const dataStreams = buildDataStreams();
+
+/* =========================================================================
+   § 13.0 — TURRET (player core) — complex animated 3D assembly
+   ========================================================================= */
+
+const turretGroup = new THREE.Group();
+scene.add(turretGroup);
+
+// ---- Base platform ----
+const platformBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(3.6, 4.2, 0.7, 48),
+  new THREE.MeshStandardMaterial({
+    color: 0x0a1a26,
+    metalness: 0.95,
+    roughness: 0.22,
+    emissive: 0x002a3d,
+    emissiveIntensity: 0.65,
+  })
+);
+platformBase.position.y = 0.35;
+turretGroup.add(platformBase);
+
+// ---- Platform inner ring ----
+const platformInner = new THREE.Mesh(
+  new THREE.CylinderGeometry(2.9, 3.1, 0.9, 48),
+  new THREE.MeshStandardMaterial({
+    color: 0x061420,
+    metalness: 0.98,
+    roughness: 0.15,
+    emissive: 0x00a8d0,
+    emissiveIntensity: 0.4,
+  })
+);
+platformInner.position.y = 0.7;
+turretGroup.add(platformInner);
+
+// ---- Glowing outer ring (animated) ----
+const outerRing = new THREE.Mesh(
+  new THREE.TorusGeometry(3.75, 0.09, 16, 96),
+  new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.9 })
+);
+outerRing.rotation.x = Math.PI/2;
+outerRing.position.y = 0.7;
+turretGroup.add(outerRing);
+
+// ---- Second outer ring (magenta, counter-rotating) ----
+const outerRing2 = new THREE.Mesh(
+  new THREE.TorusGeometry(3.55, 0.06, 12, 96),
+  new THREE.MeshBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.6 })
+);
+outerRing2.rotation.x = Math.PI/2;
+outerRing2.position.y = 0.95;
+turretGroup.add(outerRing2);
+
+// ---- Corner pylons (4x) ----
+const pylons = [];
+for (let i=0;i<4;i++){
+  const ang = i * Math.PI/2 + Math.PI/4;
+  const pylon = new THREE.Group();
+  pylon.position.set(Math.cos(ang)*3.0, 1.5, Math.sin(ang)*3.0);
+  pylon.rotation.y = -ang;
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.35, 1.6, 0.35),
+    new THREE.MeshStandardMaterial({
+      color: 0x0a2030,
+      metalness: 0.95,
+      roughness: 0.2,
+      emissive: 0x00c8ff,
+      emissiveIntensity: 0.55,
+    })
+  );
+  pylon.add(body);
+
+  const tip = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0x88ffff })
+  );
+  tip.position.y = 1.0;
+  pylon.add(tip);
+
+  turretGroup.add(pylon);
+  pylons.push({ group: pylon, tip, baseY: 1.5 });
+}
+
+// ---- Central housing ----
+const housing = new THREE.Mesh(
+  new THREE.CylinderGeometry(2.0, 2.4, 1.8, 12),
+  new THREE.MeshStandardMaterial({
+    color: 0x0d2532,
+    metalness: 0.97,
+    roughness: 0.15,
+    emissive: 0x00a0c8,
+    emissiveIntensity: 0.45,
+  })
+);
+housing.position.y = 1.8;
+turretGroup.add(housing);
+
+// ---- Housing detail rings ----
+for (let i=0;i<2;i++){
+  const ring2 = new THREE.Mesh(
+    new THREE.TorusGeometry(2.15 - i*0.15, 0.04, 8, 48),
+    new THREE.MeshBasicMaterial({ color: i === 0 ? 0x00f0ff : 0xff2bd6,
+      transparent: true, opacity: 0.7 })
+  );
+  ring2.rotation.x = Math.PI/2;
+  ring2.position.y = 1.5 + i*0.6;
+  turretGroup.add(ring2);
+}
+
+// ---- Pivot (rotates to aim) ----
+const pivot = new THREE.Group();
+pivot.position.y = 2.9;
+turretGroup.add(pivot);
+
+// ---- Cannon body ----
+const cannonBody = new THREE.Mesh(
+  new THREE.OctahedronGeometry(1.3, 1),
+  new THREE.MeshStandardMaterial({
+    color: 0x0a1c2a,
+    metalness: 0.98,
+    roughness: 0.12,
+    emissive: 0x00c8ff,
+    emissiveIntensity: 0.4,
+    flatShading: true,
+  })
+);
+cannonBody.scale.set(1.15, 0.75, 1.15);
+pivot.add(cannonBody);
+
+// ---- Core orb (pulsing) ----
+const coreOrb = new THREE.Mesh(
+  new THREE.SphereGeometry(0.75, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0x88ffff })
+);
+coreOrb.position.y = 0.15;
+pivot.add(coreOrb);
+
+// ---- Core inner orb ----
+const coreOrbInner = new THREE.Mesh(
+  new THREE.SphereGeometry(0.4, 24, 24),
+  new THREE.MeshBasicMaterial({ color: 0xffffff })
+);
+coreOrbInner.position.y = 0.15;
+pivot.add(coreOrbInner);
+
+// ---- Core glow sprite ----
+const coreGlowCanvas = document.createElement('canvas');
+coreGlowCanvas.width = 256; coreGlowCanvas.height = 256;
+{
+  const c = coreGlowCanvas.getContext('2d');
+  const g = c.createRadialGradient(128,128,0, 128,128,128);
+  g.addColorStop(0, 'rgba(140, 240, 255, 0.9)');
+  g.addColorStop(0.3, 'rgba(0, 240, 255, 0.5)');
+  g.addColorStop(0.7, 'rgba(0, 200, 255, 0.15)');
+  g.addColorStop(1, 'rgba(0, 240, 255, 0)');
+  c.fillStyle = g;
+  c.fillRect(0,0,256,256);
+}
+const coreGlowTex = new THREE.CanvasTexture(coreGlowCanvas);
+const coreGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: coreGlowTex,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  opacity: 0.75,
+}));
+coreGlow.scale.set(8, 8, 1);
+coreGlow.position.y = 0.15;
+pivot.add(coreGlow);
+
+// ---- Barrel ----
+const barrel = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.22, 0.32, 3.2, 16),
+  new THREE.MeshStandardMaterial({
+    color: 0x0a2535,
+    metalness: 0.99,
+    roughness: 0.08,
+    emissive: 0x00a8d0,
+    emissiveIntensity: 0.6,
+  })
+);
+barrel.position.y = 1.4;
+pivot.add(barrel);
+
+// ---- Barrel inner glow cylinder ----
+const barrelGlow = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.10, 0.14, 3.3, 8),
+  new THREE.MeshBasicMaterial({
+    color: 0x88ffff,
+    transparent: true,
+    opacity: 0.6,
+    blending: THREE.AdditiveBlending,
+  })
+);
+barrelGlow.position.y = 1.4;
+pivot.add(barrelGlow);
+
+// ---- Barrel tip ----
+const tipGlow = new THREE.Mesh(
+  new THREE.SphereGeometry(0.30, 20, 20),
+  new THREE.MeshBasicMaterial({ color: 0x88ffff })
+);
+tipGlow.position.y = 3.0;
+pivot.add(tipGlow);
+
+// ---- Muzzle flash sprite ----
+const muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: coreGlowTex,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  opacity: 0,
+}));
+muzzleFlash.scale.set(2.5, 2.5, 1);
+muzzleFlash.position.y = 3.2;
+pivot.add(muzzleFlash);
+
+// ---- Orbiting rings (3) ----
+const orbitRings = [];
+for (let i=0;i<3;i++){
+  const r = new THREE.Mesh(
+    new THREE.TorusGeometry(1.9 + i*0.4, 0.035, 8, 72),
+    new THREE.MeshBasicMaterial({
+      color: i % 2 ? 0xff2bd6 : 0x00f0ff,
+      transparent: true,
+      opacity: 0.6,
+    })
+  );
+  r.rotation.x = Math.PI/2 + (i-1)*0.7;
+  r.rotation.y = i * 0.9;
+  pivot.add(r);
+  orbitRings.push(r);
+}
+
+// ---- Ground glow decal (radial gradient) ----
+const decalCanvas = document.createElement('canvas');
+decalCanvas.width = 512; decalCanvas.height = 512;
+{
+  const c = decalCanvas.getContext('2d');
+  const g = c.createRadialGradient(256,256,0, 256,256,256);
+  g.addColorStop(0, 'rgba(0, 240, 255, 0.45)');
+  g.addColorStop(0.5, 'rgba(0, 200, 255, 0.15)');
+  g.addColorStop(1, 'rgba(0, 240, 255, 0)');
+  c.fillStyle = g;
+  c.fillRect(0,0,512,512);
+}
+const decalTex = new THREE.CanvasTexture(decalCanvas);
+const decal = new THREE.Mesh(
+  new THREE.PlaneGeometry(16, 16),
+  new THREE.MeshBasicMaterial({
+    map: decalTex,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  })
+);
+decal.rotation.x = -Math.PI/2;
+decal.position.y = 0.02;
+turretGroup.add(decal);
+
+/* =========================================================================
+   § 14.0 — DANGER LINE (glowing ring where words breach)
+   ========================================================================= */
+
+const DANGER_Y = 3.4;
+const ARENA_RADIUS = 13;
+
+const dangerRing = new THREE.Mesh(
+  new THREE.TorusGeometry(ARENA_RADIUS, 0.12, 12, 128),
+  new THREE.MeshBasicMaterial({
+    color: 0xff2d55,
+    transparent: true,
+    opacity: 0.85,
+  })
+);
+dangerRing.rotation.x = Math.PI/2;
+dangerRing.position.y = DANGER_Y;
+scene.add(dangerRing);
+
+const dangerRingInner = new THREE.Mesh(
+  new THREE.TorusGeometry(ARENA_RADIUS - 0.5, 0.05, 8, 128),
+  new THREE.MeshBasicMaterial({
+    color: 0xff2d55,
+    transparent: true,
+    opacity: 0.5,
+  })
+);
+dangerRingInner.rotation.x = Math.PI/2;
+dangerRingInner.position.y = DANGER_Y;
+scene.add(dangerRingInner);
+
+const dangerDisc = new THREE.Mesh(
+  new THREE.RingGeometry(0, ARENA_RADIUS, 64, 1),
+  new THREE.MeshBasicMaterial({
+    color: 0xff2d55,
+    transparent: true,
+    opacity: 0.06,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  })
+);
+dangerDisc.rotation.x = -Math.PI/2;
+dangerDisc.position.y = DANGER_Y - 0.01;
+scene.add(dangerDisc);
+
+/* =========================================================================
+   § 15.0 — WORD SYSTEM (readable 3D holographic panels)
+   ========================================================================= */
+
+const FALL_SPEED_BASE = 1.7;
+const SPAWN_Y = 22;
+const MAX_WORDS = 12;
+
+const WORDS = [
+  "algorithm","backend","compiler","database","encryption","firewall","gateway","hash","interface","javascript",
+  "kernel","latency","middleware","network","object","protocol","query","runtime","server","thread",
+  "ubuntu","variable","webhook","xenon","yield","binary","cache","daemon","ethernet","fragment",
+  "gigabyte","handshake","iterator","json","keystroke","loopback","mainframe","nanosecond","operator","payload",
+  "quantum","router","syntax","terminal","uplink","vector","wireless","proxy","token","boolean",
+  "cluster","debugger","endpoint","framework","gradient","immutable","junction","keyframe","renderer",
+  "cyber","matrix","neon","hologram","protocol","firewall","entropy","cascade","phantom","reactive",
+  "syndicate","override","spectrum","cipher","quantum","nexus","vertex","cortex","vertex","tesseract"
+];
+
+const POWERS = [
+  { id:'slow',   label:'TIME DILATION', color:0x00f0ff, css:'#00f0ff', icon:'⏱' },
+  { id:'bomb',   label:'EMP BLAST',     color:0xffd23f, css:'#ffd23f', icon:'💥' },
+  { id:'heal',   label:'NANO REPAIR',   color:0x39ff14, css:'#39ff14', icon:'✚' },
+  { id:'double', label:'OVERCLOCK x2',  color:0xff2bd6, css:'#ff2bd6', icon:'⚡' },
+];
+
+// ---- Word text rendering to canvas (CLEAR + READABLE) ----
+const WORD_FONT_SIZE = 96;
+const FONT_FAMILY = '"Share Tech Mono", monospace';
+
+function makeWordCanvas(text, isPower, isBoss){
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+
+  // Measure
+  ctx.font = `700 ${WORD_FONT_SIZE}px ${FONT_FAMILY}`;
+  const tw = ctx.measureText(text).width;
+
+  const padX = 44;
+  const padY = 30;
+  const W = Math.ceil(tw + padX*2);
+  const H = Math.ceil(WORD_FONT_SIZE + padY*2);
+
+  // Set up HiDPI canvas
+  const dpr = 2;
+  c.width = W * dpr;
+  c.height = H * dpr;
+  c.style.width = W + 'px';
+  c.style.height = H + 'px';
+
+  const draw = c.getContext('2d');
+  draw.scale(dpr, dpr);
+
+  c._w = W;
+  c._h = H;
+  c._padX = padX;
+  c._padY = padY;
+  c._fontSize = WORD_FONT_SIZE;
+  return c;
+}
+
+function renderWordToCanvas(cv, text, typedCount, isTarget, isPower, powerColor){
+  const W = cv._w, H = cv._h;
+  const padX = cv._padX, padY = cv._padY, fs = cv._fontSize;
+  const ctx = cv.getContext('2d');
+
+  ctx.setTransform(1,0,0,1,0,0);
+  const dpr = 2;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const r = 20;
+
+  // ============ BACKGROUND PANEL ============
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.lineTo(W - r, 0);
+  ctx.quadraticCurveTo(W, 0, W, r);
+  ctx.lineTo(W, H - r);
+  ctx.quadraticCurveTo(W, H, W - r, H);
+  ctx.lineTo(r, H);
+  ctx.quadraticCurveTo(0, H, 0, H - r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+
+  // Panel base (solid dark for readability)
+  ctx.fillStyle = 'rgba(6, 12, 22, 0.94)';
+  ctx.fill();
+
+  // Panel inner gradient (colored by type)
+  const grd = ctx.createLinearGradient(0, 0, 0, H);
+  if (isPower){
+    grd.addColorStop(0, 'rgba(255, 210, 63, 0.30)');
+    grd.addColorStop(0.5, 'rgba(255, 180, 20, 0.20)');
+    grd.addColorStop(1, 'rgba(255, 210, 63, 0.30)');
+  } else if (isTarget){
+    grd.addColorStop(0, 'rgba(0, 240, 255, 0.32)');
+    grd.addColorStop(0.5, 'rgba(0, 200, 255, 0.20)');
+    grd.addColorStop(1, 'rgba(0, 240, 255, 0.32)');
+  } else {
+    grd.addColorStop(0, 'rgba(0, 130, 200, 0.14)');
+    grd.addColorStop(0.5, 'rgba(0, 80, 140, 0.08)');
+    grd.addColorStop(1, 'rgba(0, 130, 200, 0.14)');
+  }
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.restore();
+
+  // ============ BORDER ============
+  ctx.save();
+  ctx.lineWidth = isTarget ? 5 : 3;
+  if (isPower)     ctx.strokeStyle = 'rgba(255, 210, 63, 1)';
+  else if (isTarget) ctx.strokeStyle = 'rgba(0, 240, 255, 1)';
+  else              ctx.strokeStyle = 'rgba(0, 180, 220, 0.75)';
+
+  ctx.shadowColor = ctx.strokeStyle;
+  ctx.shadowBlur = isTarget ? 26 : 14;
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.lineTo(W - r, 0);
+  ctx.quadraticCurveTo(W, 0, W, r);
+  ctx.lineTo(W, H - r);
+  ctx.quadraticCurveTo(W, H, W - r, H);
+  ctx.lineTo(r, H);
+  ctx.quadraticCurveTo(0, H, 0, H - r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+
+  // ============ TARGET CORNER BRACKETS ============
+  if (isTarget){
+    ctx.save();
+    ctx.strokeStyle = '#e0ffff';
+    ctx.lineWidth = 6;
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 24;
+    const c = 26;
+    ctx.beginPath();
+    ctx.moveTo(-4, c);          ctx.lineTo(-4, -4);         ctx.lineTo(c, -4);
+    ctx.moveTo(W - c, -4);      ctx.lineTo(W + 4, -4);      ctx.lineTo(W + 4, c);
+    ctx.moveTo(W + 4, H - c);   ctx.lineTo(W + 4, H + 4);   ctx.lineTo(W - c, H + 4);
+    ctx.moveTo(c, H + 4);       ctx.lineTo(-4, H + 4);      ctx.lineTo(-4, H - c);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ============ ICON FOR POWERUP ============
+  if (isPower){
+    ctx.save();
+    ctx.font = `700 48px "Rajdhani", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255, 210, 63, 1)';
+    ctx.shadowColor = 'rgba(255, 210, 63, 1)';
+    ctx.shadowBlur = 20;
+    // small indicator dot
+    ctx.beginPath();
+    ctx.arc(20, 20, 7, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ============ MAIN TEXT (readable) ============
+  ctx.save();
+  ctx.font = `700 ${fs}px ${FONT_FAMILY}`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+
+  // First draw dark shadow for readability
+  let x = padX;
+  const y = H / 2;
+
+  // Shadow pass
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 3;
+  ctx.shadowOffsetY = 3;
+  let sx = x;
+  for (let i = 0; i < text.length; i++){
+    ctx.fillText(text[i], sx, y);
+    sx += ctx.measureText(text[i]).width;
+  }
+  ctx.restore();
+
+  // Main pass — each character
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    let fill, glow;
+    if (i < typedCount){
+      // TYPED — bright green
+      fill = '#4fff3a';
+      glow = '#39ff14';
+    } else if (isPower){
+      fill = '#ffe066';
+      glow = '#ffd23f';
+    } else if (isTarget){
+      fill = '#ffffff';
+      glow = '#00f0ff';
+    } else {
+      fill = '#d8f8ff';
+      glow = '#00c8ff';
+    }
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = isTarget ? 24 : 14;
+    ctx.fillStyle = fill;
+    ctx.fillText(ch, x, y);
+    x += ctx.measureText(ch).width;
+  }
+  ctx.restore();
+
+  // ============ CARET UNDER NEXT CHAR ============
+  if (isTarget && typedCount < text.length){
+    ctx.save();
+    ctx.font = `700 ${fs}px ${FONT_FAMILY}`;
+    const before = text.substring(0, typedCount);
+    const cw = ctx.measureText(before).width;
+    const caretW = ctx.measureText(text[typedCount]).width;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 24;
+
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
+    ctx.globalAlpha = 0.5 + 0.5 * pulse;
+
+    ctx.fillRect(padX + cw, H - 22, caretW, 6);
+    ctx.restore();
+  }
+}
+
+// ---- Word mesh factory ----
+function createWordMesh(text, isPower, powerInfo, isBoss){
+  const cv = makeWordCanvas(text, isPower, isBoss);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+
+  const aspect = cv._w / cv._h;
+  const worldH = isBoss ? 2.4 : 1.7;
+  const worldW = worldH * aspect;
+
+  const geo = new THREE.PlaneGeometry(worldW, worldH);
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    // Use NormalBlending for READABILITY (no additive wash-out)
+    blending: THREE.NormalBlending,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 10;
+
+  mesh.userData = {
+    text,
+    cv, tex,
+    isPower, powerInfo, isBoss,
+    worldW, worldH,
+    typed: 0,
+    isTarget: false,
+    dead: false,
+  };
+
+  renderWordToCanvas(cv, text, 0, false, isPower, powerInfo ? powerInfo.css : null);
+  tex.needsUpdate = true;
+
+  return mesh;
+}
+
+// ---- Redraw word ----
+function redrawWord(mesh){
+  const u = mesh.userData;
+  renderWordToCanvas(
+    u.cv, u.text, u.typed, u.isTarget, u.isPower,
+    u.powerInfo ? u.powerInfo.css : null
+  );
+  u.tex.needsUpdate = true;
+}
+
+/* =========================================================================
+   § 16.0 — EFFECTS: LASERS, PARTICLES, SHOCKWAVES, FLOATS
+   ========================================================================= */
+
+// ---- LASER POOL ----
+const laserGeo = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
+laserGeo.translate(0, 0.5, 0);
+
+const laserPool = [];
+const activeLasers = [];
+const LASER_POOL_MAX = 80;
+
+function getLaser(){
+  // Try to reuse
+  for (const l of laserPool){
+    if (!l.inUse){
+      l.inUse = true;
+      return l;
+    }
+  }
+  if (laserPool.length < LASER_POOL_MAX){
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xaaffff,
+      transparent: true,
+      opacity: 1,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(laserGeo, mat);
+    mesh.visible = false;
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    const entry = { mesh, inUse: true, mat };
+    laserPool.push(entry);
+    return entry;
+  }
+  // fallback: reuse first
+  const l = laserPool[0];
+  l.inUse = true;
+  return l;
+}
+
+function fireLaser(from, to, color = 0xaaffff){
+  const entry = getLaser();
+  const m = entry.mesh;
+  m.visible = true;
+  m.material.opacity = 1;
+  m.material.color.set(color);
+
+  m.position.copy(from);
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  m.scale.set(1, len, 1);
+
+  const up = new THREE.Vector3(0, 1, 0);
+  const q = new THREE.Quaternion().setFromUnitVectors(up, dir.clone().normalize());
+  m.quaternion.copy(q);
+
+  activeLasers.push({
+    entry,
+    life: 0.15,
+    maxLife: 0.15,
+  });
+}
+
+// ---- PARTICLE POOL (Points cloud) ----
+const PARTICLE_MAX = 4000;
+const pGeo = new THREE.BufferGeometry();
+const pPositions = new Float32Array(PARTICLE_MAX * 3);
+const pColors    = new Float32Array(PARTICLE_MAX * 3);
+const pSizes     = new Float32Array(PARTICLE_MAX);
+const pAlive     = new Uint8Array(PARTICLE_MAX);
+const pVel       = new Float32Array(PARTICLE_MAX * 3);
+const pLife      = new Float32Array(PARTICLE_MAX);
+const pMaxLife   = new Float32Array(PARTICLE_MAX);
+const pGravity   = new Float32Array(PARTICLE_MAX);
+const pDrag      = new Float32Array(PARTICLE_MAX);
+
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+pGeo.setAttribute('aColor',   new THREE.BufferAttribute(pColors, 3));
+pGeo.setAttribute('aSize',    new THREE.BufferAttribute(pSizes, 1));
+pGeo.setAttribute('aLife',    new THREE.BufferAttribute(pLife, 1));
+
+const pMat = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  uniforms: {
+    uTex: { value: null },
+  },
+  vertexShader: `
+    attribute float aSize;
+    attribute vec3 aColor;
+    attribute float aLife;
+    varying vec3 vColor;
+    varying float vAlpha;
+    void main(){
+      vColor = aColor;
+      vAlpha = clamp(aLife, 0.0, 1.0);
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = aSize * (300.0 / -mv.z);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    varying vec3 vColor;
+    varying float vAlpha;
+    void main(){
+      vec2 c = gl_PointCoord - 0.5;
+      float d = length(c);
+      if (d > 0.5) discard;
+      float a = smoothstep(0.5, 0.0, d);
+      a = pow(a, 1.8);
+      gl_FragColor = vec4(vColor, a * vAlpha);
+    }`
+});
+
+const particlePoints = new THREE.Points(pGeo, pMat);
+particlePoints.frustumCulled = false;
+scene.add(particlePoints);
+
+let pCursor = 0;
+function spawnParticle(x, y, z, vx, vy, vz, r, g, b, size, life, gravity = 12, drag = 0.5){
+  const i = pCursor;
+  pCursor = (pCursor + 1) % PARTICLE_MAX;
+
+  pAlive[i] = 1;
+  pPositions[i*3] = x; pPositions[i*3+1] = y; pPositions[i*3+2] = z;
+  pVel[i*3] = vx; pVel[i*3+1] = vy; pVel[i*3+2] = vz;
+  pColors[i*3] = r; pColors[i*3+1] = g; pColors[i*3+2] = b;
+  pSizes[i] = size;
+  pLife[i] = life; pMaxLife[i] = life;
+  pGravity[i] = gravity;
+  pDrag[i] = drag;
+}
+
+function explode3D(pos, colorHex, count = 40, power = 1){
+  const c = new THREE.Color(colorHex);
+  for (let k=0;k<count;k++){
+    const a = rand(0, TAU);
+    const b = rand(-Math.PI/2, Math.PI/2);
+    const sp = rand(3, 16) * power;
+    const vx = Math.cos(a) * Math.cos(b) * sp;
+    const vy = Math.sin(b) * sp + rand(1, 5);
+    const vz = Math.sin(a) * Math.cos(b) * sp;
+    spawnParticle(
+      pos.x, pos.y, pos.z,
+      vx, vy, vz,
+      c.r, c.g, c.b,
+      rand(3, 10),
+      rand(0.5, 1.3),
+      rand(8, 16), 0.4
+    );
+  }
+}
+
+// ---- SHOCKWAVE RINGS ----
+const shockGeo = new THREE.RingGeometry(0.9, 1.0, 64);
+const activeShocks = [];
+
+function spawnShock(pos, colorHex, maxR = 3.5, life = 0.55){
+  const mat = new THREE.MeshBasicMaterial({
+    color: colorHex,
+    transparent: true,
+    opacity: 1,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const m = new THREE.Mesh(shockGeo, mat);
+  m.position.copy(pos);
+  m.lookAt(camera.position);
+  scene.add(m);
+  activeShocks.push({ mesh: m, life, maxLife: life, maxR });
+}
+
+// ---- FLOAT SPRITES (score popups) ----
+const floatSprites = [];
+
+function spawnFloat(pos, text, colorCss, size = 1.0){
+  const cv = document.createElement('canvas');
+  const fs = 96;
+  const c = cv.getContext('2d');
+  c.font = `900 ${fs}px Orbitron, sans-serif`;
+  const tw = c.measureText(text).width;
+
+  cv.width = Math.ceil(tw + 60);
+  cv.height = fs + 60;
+
+  const ctx = cv.getContext('2d');
+  ctx.font = `900 ${fs}px Orbitron, sans-serif`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = colorCss;
+  ctx.shadowBlur = 40;
+  ctx.fillStyle = colorCss;
+  ctx.fillText(text, cv.width/2, cv.height/2);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+
+  const mat = new THREE.SpriteMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+  });
+  const s = new THREE.Sprite(mat);
+  s.position.copy(pos);
+  const aspect = cv.width / cv.height;
+  const h = 1.2 * size;
+  s.scale.set(h * aspect, h, 1);
+  scene.add(s);
+
+  floatSprites.push({
+    sprite: s,
+    life: 1.3,
+    maxLife: 1.3,
+    vy: 2.5,
+  });
+}
+
+/* =========================================================================
+   § 17.0 — ACTIVE WORDS + GAME STATE
+   ========================================================================= */
+
+const activeWords = [];
+
+const state = {
+  running: false,
+  paused: false,
+  over: false,
+  time: 0,
+
+  score: 0,
+  combo: 1,
+  maxCombo: 1,
+  hp: 100,
+  wave: 1,
+  waveKills: 0,
+
+  targeted: null,
+
+  spawnTimer: 0,
+  spawnInterval: 2.8,
+  fallSpeed: FALL_SPEED_BASE,
+
+  slowUntil: 0,
+  doubleUntil: 0,
+
+  keystrokes: 0,
+  correct: 0,
+  kills: 0,
+
+  startTime: 0,
+  hudTimer: 0,
+  comboDisplay: 0,
+
+  hitFlash: 0,
+  camShake: 0,
+  turretRecoil: 0,
+
+  isBossWave: false,
+  bossPending: null,
+};
+
+/* =========================================================================
+   § 18.0 — SPAWN LOGIC
+   ========================================================================= */
+
+function spawnWord3D(){
+  if (activeWords.length >= MAX_WORDS) return;
+
+  // Pick word (avoid duplicates on screen)
+  let text = pick(WORDS);
+  let guard = 0;
+  while (activeWords.some(w => w.userData.text === text) && guard++ < 20){
+    text = pick(WORDS);
+  }
+
+  const isPower = Math.random() < 0.09;
+  const powerInfo = isPower ? pick(POWERS) : null;
+
+  const mesh = createWordMesh(text, isPower, powerInfo, false);
+
+  // Position
+  let x = 0;
+  let tries = 0;
+  do {
+    x = rand(-10.5, 10.5);
+    tries++;
+  } while (
+    tries < 30 &&
+    activeWords.some(w => Math.abs(w.position.x - x) < 2.4 && w.position.y > SPAWN_Y - 4)
+  );
+
+  mesh.position.set(x, SPAWN_Y, rand(-1, 1));
+  mesh.userData.baseX = x;
+  mesh.userData.wobblePhase = rand(0, TAU);
+  mesh.userData.speedMul = rand(0.85, 1.2);
+
+  mesh.rotation.y = rand(-0.06, 0.06);
+
+  scene.add(mesh);
+  activeWords.push(mesh);
+
+  return mesh;
+}
+
+/* =========================================================================
+   § 19.0 — INPUT HANDLING
+   ========================================================================= */
+
+function handleKey(key){
+  state.keystrokes++;
+
+  let w = state.targeted;
+  if (w && !activeWords.includes(w)){
+    w = null;
+    state.targeted = null;
+  }
+
+  if (!w){
+    // Try to lock on
+    const candidates = activeWords.filter(x => !x.userData.dead && x.userData.text[0] === key);
+    if (candidates.length){
+      candidates.sort((a, b) => b.position.y - a.position.y);
+      w = candidates[0];
+      state.targeted = w;
+      w.userData.isTarget = true;
+      redrawWord(w);
+      state.correct++;
+      w.userData.typed++;
+      onKeystroke(w);
+      return;
+    }
+    // Wrong key
+    state.combo = 1;
+    sfx.error();
+    updateHUD(true);
+    return;
+  }
+
+  const expected = w.userData.text[w.userData.typed];
+  if (key === expected){
+    state.correct++;
+    w.userData.typed++;
+    onKeystroke(w);
+  } else {
+    state.combo = 1;
+    state.hitFlash = 0.35;
+    sfx.error();
+    updateHUD(true);
+  }
+}
+
+function onKeystroke(w){
+  sfx.key();
+  state.turretRecoil = Math.min(1, state.turretRecoil + 0.75);
+
+  // Laser from barrel tip to current character
+  const totalW = w.userData.worldW;
+  const charW = totalW / w.userData.text.length;
+  const sx = w.position.x - totalW/2;
+  const cx = sx + (w.userData.typed - 0.5) * charW;
+
+  const from = new THREE.Vector3(0, 6.0, 0);
+  const to = new THREE.Vector3(cx, w.position.y, w.position.z);
+  fireLaser(from, to, 0xaaffff);
+
+  // Muzzle flash
+  muzzleFlash.material.opacity = 1;
+  muzzleFlash.scale.set(3.5, 3.5, 1);
+
+  // Spark burst at target
+  for (let i=0;i<8;i++){
+    const a = rand(0, TAU);
+    const sp = rand(2, 10);
+    spawnParticle(
+      cx, w.position.y, w.position.z,
+      Math.cos(a) * sp, rand(-2, 8), Math.sin(a) * sp,
+      0.6, 0.95, 1.0,
+      rand(3, 7),
+      rand(0.25, 0.55),
+      6, 0.3
+    );
+  }
+
+  redrawWord(w);
+  if (w.userData.typed >= w.userData.text.length){
+    completeWord(w);
+  }
+}
+
+function completeWord(w){
+  w.userData.dead = true;
+  const idx = activeWords.indexOf(w);
+  if (idx >= 0) activeWords.splice(idx, 1);
+  if (state.targeted === w) state.targeted = null;
+
+  scene.remove(w);
+  w.userData.tex.dispose();
+  w.material.dispose();
+  w.geometry.dispose();
+
+  state.kills++;
+  state.waveKills++;
+
+  const mult = (state.time < state.doubleUntil) ? 2 : 1;
+  const gain = Math.round(w.userData.text.length * 10 * state.combo * mult);
+  state.score += gain;
+  state.combo++;
+  if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+
+  const col = w.userData.powerInfo ? w.userData.powerInfo.color : 0x00f0ff;
+  explode3D(w.position, col, 45, 1);
+  spawnShock(w.position, col, 3.5, 0.55);
+
+  const floatColor = w.userData.powerInfo ? w.userData.powerInfo.css : '#a0f0ff';
+  spawnFloat(w.position, '+' + gain, floatColor, 1.0);
+
+  if (w.userData.powerInfo) applyPower(w.userData.powerInfo, w.position);
+
+  sfx.word();
+  state.camShake = Math.min(0.7, state.camShake + 0.18);
+
+  // Combo display
+  state.comboDisplay = Math.min(1, state.comboDisplay + 0.4);
+
+  if (state.waveKills >= 8 && !state.isBossWave) nextWave();
+
+  updateHUD(true);
+}
+
+function breachWord(w){
+  w.userData.dead = true;
+  const idx = activeWords.indexOf(w);
+  if (idx >= 0) activeWords.splice(idx, 1);
+  if (state.targeted === w) state.targeted = null;
+
+  scene.remove(w);
+  w.userData.tex.dispose();
+  w.material.dispose();
+  w.geometry.dispose();
+
+  state.hp -= 12;
+  state.combo = 1;
+  state.hitFlash = 0.7;
+  state.camShake = 1.0;
+
+  explode3D(new THREE.Vector3(w.position.x, DANGER_Y, w.position.z), 0xff2d55, 60, 1.3);
+  spawnShock(new THREE.Vector3(w.position.x, DANGER_Y, w.position.z), 0xff2d55, 6, 0.9);
+  sfx.damage();
+
+  // Screen flash
+  const flash = document.getElementById('damageFlash');
+  flash.classList.remove('hit');
+  void flash.offsetWidth;
+  flash.classList.add('hit');
+
+  if (state.hp <= 0){
+    state.hp = 0;
+    endGame();
+  }
+  updateHUD(true);
+}
+
+/* =========================================================================
+   § 20.0 — POWERUPS
+   ========================================================================= */
+
+function applyPower(power, pos){
+  switch (power.id){
+    case 'slow':
+      state.slowUntil = state.time + 7;
+      spawnFloat(new THREE.Vector3(pos.x, pos.y + 1.5, pos.z), 'TIME DILATION', '#00f0ff', 1.1);
+      showPowerToast('TIME DILATION', '#00f0ff');
+      break;
+    case 'bomb': {
+      const snapshot = activeWords.slice();
+      for (const w of snapshot){
+        if (w.userData.dead) continue;
+        w.userData.dead = true;
+        const i = activeWords.indexOf(w);
+        if (i >= 0) activeWords.splice(i, 1);
+        scene.remove(w);
+        w.userData.tex.dispose();
+        w.material.dispose();
+        w.geometry.dispose();
+        explode3D(w.position, w.userData.powerInfo ? w.userData.powerInfo.color : 0x00f0ff, 35, 1);
+        state.score += 60;
+      }
+      state.targeted = null;
+      state.camShake = 1.4;
+      spawnFloat(new THREE.Vector3(0, 10, 0), 'EMP BLAST', '#ffd23f', 1.5);
+      showPowerToast('EMP BLAST', '#ffd23f');
+      sfx.bigBoom();
+      break;
+    }
+    case 'heal':
+      state.hp = Math.min(100, state.hp + 25);
+      spawnFloat(new THREE.Vector3(pos.x, pos.y + 1.5, pos.z), '+25 CORE', '#39ff14', 1.1);
+      showPowerToast('NANO REPAIR', '#39ff14');
+      break;
+    case 'double':
+      state.doubleUntil = state.time + 12;
+      spawnFloat(new THREE.Vector3(pos.x, pos.y + 1.5, pos.z), 'OVERCLOCK x2', '#ff2bd6', 1.1);
+      showPowerToast('OVERCLOCK x2', '#ff2bd6');
+      break;
+  }
+  sfx.power();
+  updateHUD(true);
+}
+
+function showPowerToast(text, color){
+  const toast = document.getElementById('powerToast');
+  toast.textContent = text;
+  toast.style.color = color;
+  toast.classList.remove('show');
+  void toast.offsetWidth;
+  toast.classList.add('show');
+}
+
+/* =========================================================================
+   § 21.0 — WAVE MANAGEMENT
+   ========================================================================= */
+
+function nextWave(){
+  state.wave++;
+  state.waveKills = 0;
+  state.spawnInterval = Math.max(0.6, 2.8 * Math.pow(0.90, state.wave - 1));
+  state.fallSpeed = Math.min(7.2, FALL_SPEED_BASE + state.wave * 0.4);
+
+  announceWave(state.wave);
+  sfx.wave();
+  updateHUD(true);
+}
+
+function announceWave(n){
+  const el = document.getElementById('waveAnnounce');
+  el.textContent = 'WAVE ' + n;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  document.getElementById('waveBadge').textContent = 'WAVE ' + n;
+}
+
+/* =========================================================================
+   § 22.0 — HUD UPDATE
+   ========================================================================= */
+
+function updateHUD(force){
+  document.getElementById('hud-score').textContent = state.score.toLocaleString();
+  document.getElementById('hud-combo').textContent = 'x' + state.combo;
+  document.getElementById('waveBadge').textContent = 'WAVE ' + state.wave;
+
+  const mins = (performance.now() - state.startTime) / 60000;
+  const wpm = mins > 0.02 ? Math.round((state.correct/5) / mins) : 0;
+  document.getElementById('hud-wpm').textContent = wpm;
+
+  const acc = state.keystrokes ? Math.round(state.correct / state.keystrokes * 100) : 100;
+  document.getElementById('hud-acc').textContent = acc + '%';
+
+  // HP bar
+  const hp = clamp(state.hp, 0, 100);
+  const hpFill = document.getElementById('hpfill');
+  hpFill.style.width = hp + '%';
+  hpFill.classList.toggle('warn', hp < 55 && hp >= 25);
+  hpFill.classList.toggle('crit', hp < 25);
+
+  // Combo meter
+  const comboRatio = clamp((state.combo - 1) / 20, 0, 1);
+  document.getElementById('comboFill').style.width = (comboRatio * 100) + '%';
+  document.getElementById('comboLabel').textContent =
+    state.combo >= 15 ? 'MEGA COMBO x' + state.combo
+    : state.combo >= 8 ? 'HIGH COMBO x' + state.combo
+    : 'COMBO METER';
+
+  // Status indicators
+  document.getElementById('indSlow').classList.toggle('active', state.time < state.slowUntil);
+  document.getElementById('indDouble').classList.toggle('active', state.time < state.doubleUntil);
+}
+
+/* =========================================================================
+   § 23.0 — INPUT LISTENER
+   ========================================================================= */
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Tab') e.preventDefault();
+
+  if (e.key === 'Escape' || e.key === 'p' || e.key === 'P'){
+    if (state.running && !state.over) togglePause();
+    return;
+  }
+
+  if (!state.running || state.paused || state.over){
+    if (e.key === 'Enter'){
+      if (state.over) startGame();
+      else if (state.paused) togglePause();
+      else startGame();
+    }
+    return;
+  }
+
+  if (e.key.length !== 1) return;
+  if (!/[a-zA-Z]/.test(e.key)) return;
+
+  handleKey(e.key.toLowerCase());
+});
+
+/* =========================================================================
+   § 24.0 — SCREEN MANAGEMENT
+   ========================================================================= */
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  if (id) document.getElementById(id).classList.remove('hidden');
+}
+
+function startGame(){
+  // Reset state
+  state.running = true;
+  state.paused = false;
+  state.over = false;
+  state.time = 0;
+
+  state.score = 0;
+  state.combo = 1;
+  state.maxCombo = 1;
+  state.hp = 100;
+  state.wave = 1;
+  state.waveKills = 0;
+  state.targeted = null;
+
+  state.spawnTimer = 0.7;
+  state.spawnInterval = 2.8;
+  state.fallSpeed = FALL_SPEED_BASE;
+
+  state.slowUntil = 0;
+  state.doubleUntil = 0;
+
+  state.keystrokes = 0;
+  state.correct = 0;
+  state.kills = 0;
+
+  state.hitFlash = 0;
+  state.camShake = 0;
+  state.turretRecoil = 0;
+  state.comboDisplay = 0;
+
+  state.startTime = performance.now();
+
+  // Clear active words
+  for (const w of activeWords.slice()){
+    scene.remove(w);
+    w.userData.tex.dispose();
+    w.material.dispose();
+    w.geometry.dispose();
+  }
+  activeWords.length = 0;
+
+  // Clear particles
+  for (let i=0;i<PARTICLE_MAX;i++){
+    pAlive[i] = 0;
+    pSizes[i] = 0;
+    pLife[i] = 0;
+  }
+  pGeo.attributes.position.needsUpdate = true;
+  pGeo.attributes.aColor.needsUpdate = true;
+  pGeo.attributes.aSize.needsUpdate = true;
+  pGeo.attributes.aLife.needsUpdate = true;
+
+  // Clear lasers
+  for (const l of activeLasers){
+    l.entry.inUse = false;
+    l.entry.mesh.visible = false;
+  }
+  activeLasers.length = 0;
+
+  // Clear shocks
+  for (const s of activeShocks){
+    scene.remove(s.mesh);
+    s.mesh.material.dispose();
+  }
+  activeShocks.length = 0;
+
+  // Clear floats
+  for (const f of floatSprites){
+    scene.remove(f.sprite);
+    f.sprite.material.map.dispose();
+    f.sprite.material.dispose();
+  }
+  floatSprites.length = 0;
+
+  // Reset HUD
+  document.getElementById('waveBadge').textContent = 'WAVE 1';
+  announceWave(1);
+  showScreen(null);
+  updateHUD(true);
+  initAudio();
+}
+
+function endGame(){
+  state.over = true;
+  state.running = false;
+  sfx.over();
+  state.camShake = 2.2;
+
+  const mins = (performance.now() - state.startTime) / 60000;
+  const wpm = mins > 0.02 ? Math.round((state.correct/5) / mins) : 0;
+  const acc = state.keystrokes ? Math.round(state.correct / state.keystrokes * 100) : 100;
+
+  document.getElementById('ov-score').textContent = state.score.toLocaleString();
+  document.getElementById('ov-wpm').textContent = wpm;
+  document.getElementById('ov-acc').textContent = acc + '%';
+  document.getElementById('ov-combo').textContent = 'x' + state.maxCombo;
+  document.getElementById('ov-wave').textContent = state.wave;
+  document.getElementById('ov-kills').textContent = state.kills;
+
+  setTimeout(() => showScreen('screen-over'), 900);
+}
+
+function togglePause(){
+  if (state.over) return;
+  state.paused = !state.paused;
+  if (state.paused) showScreen('screen-pause');
+  else showScreen(null);
+}
+
+/* Buttons */
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', startGame);
+document.getElementById('btn-resume').addEventListener('click', togglePause);
+document.getElementById('btn-quit').addEventListener('click', () => {
+  state.paused = false;
+  state.running = false;
+  state.over = false;
+
+  for (const w of activeWords.slice()){
+    scene.remove(w);
+    w.userData.tex.dispose();
+    w.material.dispose();
+    w.geometry.dispose();
+  }
+  activeWords.length = 0;
+
+  showScreen('screen-start');
+});
+
+const muteBtn = document.getElementById('muteBtn');
+muteBtn.addEventListener('click', () => {
+  muted = !muted;
+  muteBtn.textContent = muted ? '🔇' : '🔊';
+  if (!muted) initAudio();
+});
+
+/* =========================================================================
+   § 25.0 — UPDATE LOGIC
+   ========================================================================= */
+
+function update(dt){
+  state.time += dt;
+
+  // ---- Danger ring pulse ----
+  const dp = 0.5 + 0.5 * Math.sin(state.time * 3);
+  dangerRing.material.opacity = 0.55 + 0.35 * dp;
+  dangerRingInner.material.opacity = 0.3 + 0.3 * dp;
+  dangerDisc.material.opacity = 0.03 + 0.06 * dp;
+  dangerLight.intensity = 1.6 + 1.4 * dp;
+
+  // ---- Turret animation ----
+  platformBase.rotation.y += dt * 0.06;
+  platformInner.rotation.y -= dt * 0.1;
+  outerRing.rotation.z += dt * 0.55;
+  outerRing2.rotation.z -= dt * 0.7;
+
+  // Pylons bob
+  for (let i=0;i<pylons.length;i++){
+    const p = pylons[i];
+    const t = state.time * 2 + i * 0.7;
+    p.group.position.y = p.baseY + Math.sin(t) * 0.15;
+    p.tip.scale.setScalar(1 + Math.sin(t * 2) * 0.15);
+  }
+
+  // Core pulse
+  const cp = 0.5 + 0.5 * Math.sin(state.time * 6);
+  coreOrb.scale.setScalar(1 + cp * 0.15);
+  coreOrbInner.scale.setScalar(1 + cp * 0.3);
+  coreOrb.material.color.setHSL(0.5, 1, 0.5 + cp * 0.3);
+  coreGlow.scale.setScalar(7.5 + Math.sin(state.time * 4) * 1.2);
+  coreGlow.material.opacity = 0.65 + cp * 0.25;
+
+  // Orbit rings
+  for (let i=0;i<orbitRings.length;i++){
+    const r = orbitRings[i];
+    r.rotation.z += dt * (0.4 + i * 0.3) * (i % 2 ? -1 : 1);
+    r.rotation.x += dt * 0.15 * (i + 1);
+    r.rotation.y += dt * 0.2;
+  }
+
+  // Muzzle flash decay
+  muzzleFlash.material.opacity *= Math.pow(0.001, dt);
+  muzzleFlash.scale.multiplyScalar(Math.pow(0.001, dt * 0.5));
+  if (muzzleFlash.scale.x < 1.5){
+    muzzleFlash.scale.set(2.5, 2.5, 1);
+  }
+
+  // Turret recoil
+  state.turretRecoil *= Math.pow(0.001, dt);
+  pivot.position.y = 2.9 - state.turretRecoil * 0.35;
+
+  // Pivot rotation toward target
+  let targetAngle = 0;
+  if (state.targeted && activeWords.includes(state.targeted)){
+    const dx = state.targeted.position.x;
+    targetAngle = Math.atan2(dx, 8) * 0.85;
+  }
+  pivot.rotation.y = damp(pivot.rotation.y, targetAngle, 8, dt);
+
+  // Slight lean toward target
+  let leanX = 0;
+  if (state.targeted && activeWords.includes(state.targeted)){
+    const dz = state.targeted.position.z - 2;
+    leanX = -dz * 0.02;
+  }
+  pivot.rotation.x = damp(pivot.rotation.x, leanX, 6, dt);
+
+  // Tip glow pulse when targeting
+  if (state.targeted){
+    tipGlow.scale.setScalar(1.4 + Math.sin(state.time * 20) * 0.3);
+    tipGlow.material.color.setHex(0xffffff);
+  } else {
+    tipGlow.scale.setScalar(1 + state.turretRecoil * 2);
+    tipGlow.material.color.setHex(0x88ffff);
+  }
+
+  // ---- Word spawning ----
+  state.spawnTimer -= dt;
+  if (state.spawnTimer <= 0){
+    spawnWord3D();
+    state.spawnTimer = state.spawnInterval * rand(0.85, 1.15);
+  }
+
+  // ---- Word movement ----
+  const slowFactor = (state.time < state.slowUntil) ? 0.35 : 1;
+  const sdt = dt * slowFactor;
+
+  for (let i = activeWords.length - 1; i >= 0; i--){
+    const w = activeWords[i];
+    const u = w.userData;
+    if (u.dead) continue;
+
+    w.position.y -= state.fallSpeed * u.speedMul * sdt;
+    w.position.x = u.baseX + Math.sin(state.time * 1.2 + u.wobblePhase) * 0.4;
+
+    // Slight rotation
+    w.rotation.y = Math.sin(state.time * 0.8 + u.wobblePhase) * 0.05;
+
+    // Target scale pulse
+    const targetScale = u.isTarget ? 1.06 + Math.sin(state.time * 12) * 0.03 : 1.0;
+    w.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), Math.min(1, dt * 8));
+
+    // Z-billboard (only yaw to camera)
+    if (u.isTarget){
+      // gently face camera
+      const dx = camera.position.x - w.position.x;
+      const dz = camera.position.z - w.position.z;
+      const yawToCam = Math.atan2(dx, dz);
+      // w.rotation.y = damp(w.rotation.y, yawToCam, 4, dt); // optional billboard
+    }
+
+    if (w.position.y <= DANGER_Y) breachWord(w);
+  }
+
+  // Validate target
+  if (state.targeted && !activeWords.includes(state.targeted)){
+    state.targeted = null;
+  }
+
+  // ---- Particle update ----
+  let anyP = false;
+  for (let i=0;i<PARTICLE_MAX;i++){
+    if (!pAlive[i]) continue;
+    anyP = true;
+
+    pLife[i] -= dt;
+    if (pLife[i] <= 0){
+      pAlive[i] = 0;
+      pSizes[i] = 0;
+      continue;
+    }
+    pVel[i*3+1] -= pGravity[i] * dt;
+
+    const damp0 = Math.pow(1 - pDrag[i], dt * 60);
+    pVel[i*3]   *= damp0;
+    pVel[i*3+1] *= damp0;
+    pVel[i*3+2] *= damp0;
+
+    pPositions[i*3]   += pVel[i*3]   * dt;
+    pPositions[i*3+1] += pVel[i*3+1] * dt;
+    pPositions[i*3+2] += pVel[i*3+2] * dt;
+
+    // Fade by life
+    const lr = pLife[i] / pMaxLife[i];
+    pSizes[i] = pSizes[i] * (0.5 + lr * 0.5);
+  }
+
+  if (anyP){
+    pGeo.attributes.position.needsUpdate = true;
+    pGeo.attributes.aSize.needsUpdate = true;
+  }
+
+  // ---- Laser update ----
+  for (let i = activeLasers.length - 1; i >= 0; i--){
+    const l = activeLasers[i];
+    l.life -= dt;
+    const a = clamp(l.life / l.maxLife, 0, 1);
+    l.entry.mesh.material.opacity = a;
+    l.entry.mesh.material.color.setRGB(0.67 + a * 0.33, 1, 1);
+
+    if (l.life <= 0){
+      l.entry.mesh.visible = false;
+      l.entry.inUse = false;
+      activeLasers.splice(i, 1);
+    }
+  }
+
+  // ---- Shockwave update ----
+  for (let i = activeShocks.length - 1; i >= 0; i--){
+    const s = activeShocks[i];
+    s.life -= dt;
+    const t = 1 - (s.life / s.maxLife);
+    const scale = lerp(0.15, s.maxR, t);
+    s.mesh.scale.setScalar(scale);
+    s.mesh.material.opacity = 1 - t;
+    s.mesh.lookAt(camera.position);
+
+    if (s.life <= 0){
+      scene.remove(s.mesh);
+      s.mesh.material.dispose();
+      activeShocks.splice(i, 1);
+    }
+  }
+
+  // ---- Float sprites ----
+  for (let i = floatSprites.length - 1; i >= 0; i--){
+    const f = floatSprites[i];
+    f.life -= dt;
+    f.sprite.position.y += f.vy * dt;
+    f.vy *= Math.pow(0.5, dt);
+    const a = clamp(f.life / f.maxLife, 0, 1);
+    f.sprite.material.opacity = a;
+    const s = 1 + (1 - a) * 0.3;
+    const baseW = f.sprite.scale.x / (1 + 0);
+    f.sprite.scale.multiplyScalar(1.0); // no-op
+
+    if (f.life <= 0){
+      scene.remove(f.sprite);
+      f.sprite.material.map.dispose();
+      f.sprite.material.dispose();
+      floatSprites.splice(i, 1);
+    }
+  }
+
+  // ---- Camera shake ----
+  state.camShake = Math.max(0, state.camShake - dt * 2.5);
+  const camSway = new THREE.Vector3(
+    Math.sin(state.time * 0.32) * 0.4,
+    Math.cos(state.time * 0.48) * 0.25,
+    0
+  );
+  const shakeAmt = state.camShake * 0.75;
+  const shakeVec = new THREE.Vector3(
+    rand(-shakeAmt, shakeAmt),
+    rand(-shakeAmt, shakeAmt),
+    rand(-shakeAmt, shakeAmt)
+  );
+  camera.position.copy(CAM_BASE).add(camSway).add(shakeVec);
+  camera.lookAt(CAM_TARGET);
+  camera.rotation.z += Math.sin(state.time * 0.3) * 0.008;
+
+  // ---- Combo display decay ----
+  state.comboDisplay *= Math.pow(0.3, dt);
+
+  // ---- HUD throttle ----
+  state.hudTimer -= dt;
+  if (state.hudTimer <= 0){
+    state.hudTimer = 0.1;
+    updateHUD();
+  }
+
+  // ---- Bloom pulse on hit ----
+  bloomPass.strength = 1.2 + state.hitFlash * 0.9;
+
+  // ---- Final pass uniforms ----
+  finalPass.uniforms.uTime.value = state.time;
+  finalPass.uniforms.uHit.value = state.hitFlash;
+  finalPass.uniforms.uCombo.value = state.comboDisplay;
+
+  // ---- Ground update ----
+  groundMat.uniforms.uHit.value = state.hitFlash;
+}
+
+/* =========================================================================
+   § 26.0 — POST-PROCESSING
+   ========================================================================= */
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  1.25,  // strength
+  0.62,  // radius
+  0.08   // threshold
+);
+composer.addPass(bloomPass);
+
+// FXAA
+const fxaaPass = new ShaderPass(FXAAShader);
+const pixelRatio = renderer.getPixelRatio();
+fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+composer.addPass(fxaaPass);
+
+// Final pass: chromatic aberration + vignette + grain
+const FinalShader = {
+  uniforms: {
+    tDiffuse:     { value: null },
+    uTime:        { value: 0 },
+    uAberration:  { value: 0.0022 },
+    uVignette:    { value: 0.9 },
+    uGrain:       { value: 0.06 },
+    uHit:         { value: 0 },
+    uCombo:       { value: 0 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main(){
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float uTime;
+    uniform float uAberration;
+    uniform float uVignette;
+    uniform float uGrain;
+    uniform float uHit;
+    uniform float uCombo;
+    varying vec2 vUv;
+
+    float hash(vec2 p){
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
+
+    void main(){
+      vec2 uv = vUv;
+      vec2 dir = uv - 0.5;
+      float dist = length(dir);
+
+      // chromatic aberration
+      float amt = uAberration * (0.5 + dist * 2.5);
+      vec2 off = dir * amt;
+
+      float r = texture2D(tDiffuse, uv - off).r;
+      float g = texture2D(tDiffuse, uv).g;
+      float b = texture2D(tDiffuse, uv + off).b;
+      vec3 col = vec3(r, g, b);
+
+      // scanline
+      float scan = sin(uv.y * 1000.0 + uTime * 8.0) * 0.018;
+      col += scan;
+
+      // hit flash
+      col = mix(col, vec3(1.0, 0.15, 0.35), uHit * 0.3 * (0.4 + dist));
+
+      // combo glow at edges
+      float edge = smoothstep(0.3, 0.7, dist);
+      col += vec3(1.0, 0.3, 0.9) * edge * uCombo * 0.15;
+
+      // vignette
+      float vig = smoothstep(1.0, 0.28, dist * 1.05);
+      col *= mix(1.0 - uVignette, 1.0, vig);
+
+      // grain
+      float n = hash(uv * 700.0 + uTime);
+      col += (n - 0.5) * uGrain;
+
+      gl_FragColor = vec4(col, 1.0);
+    }`
+};
+const finalPass = new ShaderPass(FinalShader);
+finalPass.renderToScreen = true;
+composer.addPass(finalPass);
+
+/* =========================================================================
+   § 27.0 — MAIN LOOP
+   ========================================================================= */
+
+const clock = new THREE.Clock();
+let lastT = 0;
+
+function loop(){
+  requestAnimationFrame(loop);
+  const t = clock.getElapsedTime();
+  const dt = Math.min(0.05, t - lastT || 0.016);
+  lastT = t;
+
+  if (state.running && !state.paused){
+    update(dt);
+  } else {
+    // Idle animation
+    state.time += dt * 0.4;
+
+    // Turret still animates
+    platformBase.rotation.y += dt * 0.1;
+    platformInner.rotation.y -= dt * 0.15;
+    outerRing.rotation.z += dt * 0.4;
+    outerRing2.rotation.z -= dt * 0.5;
+
+    const cp = 0.5 + 0.5 * Math.sin(state.time * 4);
+    coreOrb.scale.setScalar(1 + cp * 0.12);
+    coreGlow.scale.setScalar(7.5 + Math.sin(state.time * 3) * 1);
+    coreGlow.material.opacity = 0.6 + cp * 0.25;
+
+    for (let i=0;i<pylons.length;i++){
+      const p = pylons[i];
+      p.group.position.y = p.baseY + Math.sin(state.time * 2 + i) * 0.15;
+    }
+
+    for (let i=0;i<orbitRings.length;i++){
+      const r = orbitRings[i];
+      r.rotation.z += dt * (0.4 + i * 0.3) * (i % 2 ? -1 : 1);
+      r.rotation.x += dt * 0.15 * (i + 1);
+    }
+
+    // Camera idle
+    camera.position.set(
+      Math.sin(state.time * 0.3) * 0.5,
+      10 + Math.cos(state.time * 0.45) * 0.3,
+      22
+    );
+    camera.lookAt(CAM_TARGET);
+
+    // Still update particle/laser/fx
+    updateEffectPool(dt);
+
+    // Update uniforms
+    finalPass.uniforms.uTime.value = state.time;
+    finalPass.uniforms.uHit.value = 0;
+    finalPass.uniforms.uCombo.value = 0;
+  }
+
+  // ---- Ambient environment animation (always) ----
+  stars.material.uniforms.uTime.value = state.time;
+  groundMat.uniforms.uTime.value = state.time;
+  groundMat.uniforms.uCam.value.copy(camera.position);
+
+  // Nebula drift
+  nebula.children.forEach((s, i) => {
+    const pulse = 0.9 + 0.1 * Math.sin(state.time * 0.6 + s.userData.phase);
+    const base = s.userData.baseScale;
+    s.scale.set(base * pulse, base * pulse, 1);
+    s.material.opacity = 0.28 + 0.1 * Math.sin(state.time * 0.4 + s.userData.phase);
+  });
+
+  // Billboards
+  billboards.children.forEach((b, i) => {
+    if (b.material.uniforms && b.material.uniforms.uTime){
+      b.material.uniforms.uTime.value = state.time;
+    }
+  });
+
+  // Traffic
+  traffic.trails.forEach(tr => {
+    tr.mesh.position.x += tr.speed * dt;
+    if (tr.speed > 0 && tr.mesh.position.x > 110){
+      tr.mesh.position.x = -110;
+      tr.mesh.position.y = tr.baseY + rand(-1, 1);
+      tr.mesh.position.z = tr.baseZ + rand(-5, 5);
+    } else if (tr.speed < 0 && tr.mesh.position.x < -110){
+      tr.mesh.position.x = 110;
+      tr.mesh.position.y = tr.baseY + rand(-1, 1);
+      tr.mesh.position.z = tr.baseZ + rand(-5, 5);
+    }
+    // slight bob
+    tr.mesh.position.y += Math.sin(state.time * 2 + tr.phase) * dt * 0.3;
+  });
+
+  // Data streams
+  dataStreams.streams.forEach(s => {
+    s.position.y -= s.userData.speed * dt;
+    if (s.position.y < -5){
+      s.position.y = s.userData.resetY;
+      const ang = rand(0, TAU);
+      const r = rand(16, 28);
+      s.position.x = Math.cos(ang) * r;
+      s.position.z = Math.sin(ang) * r;
+    }
+  });
+
+  // Hit flash decay
+  if (state.hitFlash > 0){
+    state.hitFlash = Math.max(0, state.hitFlash - dt * 1.6);
+  }
+
+  // Shake decay
+  if (state.camShake > 0 && !state.running){
+    state.camShake = Math.max(0, state.camShake - dt * 2.5);
+  }
+
+  composer.render();
+}
+
+// Helper to update effect pools when paused (so they still decay nicely)
+function updateEffectPool(dt){
+  // Lasers
+  for (let i = activeLasers.length - 1; i >= 0; i--){
+    const l = activeLasers[i];
+    l.life -= dt * 0.5;
+    if (l.life <= 0){
+      l.entry.mesh.visible = false;
+      l.entry.inUse = false;
+      activeLasers.splice(i, 1);
+    } else {
+      l.entry.mesh.material.opacity = clamp(l.life / l.maxLife, 0, 1);
+    }
+  }
+  // Shocks
+  for (let i = activeShocks.length - 1; i >= 0; i--){
+    const s = activeShocks[i];
+    s.life -= dt * 0.5;
+    if (s.life <= 0){
+      scene.remove(s.mesh);
+      s.mesh.material.dispose();
+      activeShocks.splice(i, 1);
+    } else {
+      const t = 1 - (s.life / s.maxLife);
+      s.mesh.scale.setScalar(lerp(0.15, s.maxR, t));
+      s.mesh.material.opacity = 1 - t;
+      s.mesh.lookAt(camera.position);
+    }
+  }
+  // Floats
+  for (let i = floatSprites.length - 1; i >= 0; i--){
+    const f = floatSprites[i];
+    f.life -= dt * 0.6;
+    if (f.life <= 0){
+      scene.remove(f.sprite);
+      f.sprite.material.map.dispose();
+      f.sprite.material.dispose();
+      floatSprites.splice(i, 1);
+    } else {
+      f.sprite.position.y += f.vy * dt * 0.5;
+      f.sprite.material.opacity = clamp(f.life / f.maxLife, 0, 1);
+    }
+  }
+}
+
+/* =========================================================================
+   § 28.0 — RESIZE
+   ========================================================================= */
+
+window.addEventListener('resize', () => {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+
+  const pr = renderer.getPixelRatio();
+  fxaaPass.material.uniforms['resolution'].value.x = 1 / (w * pr);
+  fxaaPass.material.uniforms['resolution'].value.y = 1 / (h * pr);
+});
+
+/* =========================================================================
+   § 29.0 — BOOT
+   ========================================================================= */
+
+showScreen('screen-start');
+updateHUD(true);
+
+// Hide loader
+let progress = 0;
+const ldrFill = document.getElementById('ldrFill');
+const ldrInterval = setInterval(() => {
+  progress = Math.min(100, progress + rand(8, 20));
+  ldrFill.style.width = progress + '%';
+  if (progress >= 100){
+    clearInterval(ldrInterval);
+    setTimeout(() => {
+      document.getElementById('loader').classList.add('hide');
+    }, 350);
+  }
+}, 120);
+
+// Safety hide
+setTimeout(() => {
+  document.getElementById('loader').classList.add('hide');
+}, 3000);
+
+// Kick off main loop
+requestAnimationFrame(loop);
+
+/* =========================================================================
+   § 30.0 — END
+   ========================================================================= */
+</script>
+</body>
+</html>
